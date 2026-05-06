@@ -1,0 +1,47 @@
+[
+  {
+    "id": "welcome-bincho",
+    "title": "ようこそ、Binchoの部屋へ",
+    "description": "シャムのBinchoがお出迎え。MP4をアップロードすると本物のクリップが並びます。",
+    "catName": "Bincho",
+    "breed": "siamese",
+    "tags": [
+      "siamese",
+      "welcome"
+    ],
+    "durationSec": 0,
+    "status": "pending",
+    "createdAt": "2026-05-06T14:02:40.029583962Z",
+    "updatedAt": "2026-05-06T14:02:40.029583962Z"
+  },
+  {
+    "id": "welcome-kanpachi",
+    "title": "Kanpachi、獲物を狙う",
+    "description": "ベンガルのKanpachiが計装済みプレイヤーで動きを観察します。",
+    "catName": "Kanpachi",
+    "breed": "bengal",
+    "tags": [
+      "bengal",
+      "welcome"
+    ],
+    "durationSec": 0,
+    "status": "pending",
+    "createdAt": "2026-05-06T14:02:40.029583962Z",
+    "updatedAt": "2026-05-06T14:02:40.029583962Z"
+  },
+  {
+    "id": "f89496bc-c7f0-4ce8-a5dd-5bfa781dc7c1",
+    "title": "猫2匹がくつろぐ動画",
+    "description": "カンパチ3歳",
+    "catName": "Bincho",
+    "breed": "siamese",
+    "tags": [
+      "test"
+    ],
+    "durationSec": 22.2353,
+    "status": "ready",
+    "playlistUrl": "http://localhost:8080/media/f89496bc-c7f0-4ce8-a5dd-5bfa781dc7c1/index.m3u8",
+    "createdAt": "2026-05-06T14:17:23.288377093Z",
+    "updatedAt": "2026-05-06T14:17:24.97473001Z"
+  }
+]

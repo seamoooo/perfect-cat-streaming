@@ -1,0 +1,27 @@
+services:
+  backend:
+    build:
+      target: dev
+    command: ["go", "run", "./cmd/server"]
+    volumes:
+      - ./backend:/app
+      - ./data:/var/app/data
+      - go-mod-cache:/go/pkg/mod
+    environment:
+      ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8000
+
+  frontend:
+    build:
+      dockerfile: Dockerfile.dev
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+
+volumes:
+  go-mod-cache:
+  frontend-node-modules:
