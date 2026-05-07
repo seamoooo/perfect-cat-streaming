@@ -37,6 +37,9 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "S3_REGION", value = var.region },
       { name = "MEDIA_BASE_URL", value = length(local.cloudfront_alias) > 0 ? "https://${local.cloudfront_alias[0]}" : "https://${aws_cloudfront_distribution.media.domain_name}" },
     ]
+    secrets = [
+      { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
+    ]
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -78,7 +81,7 @@ resource "aws_ecs_service" "backend" {
     rollback = true
   }
 
-  depends_on = [aws_lb_listener.http]
+  depends_on = [aws_lb_listener.http, aws_db_instance.main]
 }
 
 # --- Frontend task ---

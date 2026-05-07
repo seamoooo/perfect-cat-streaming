@@ -33,3 +33,18 @@ output "frontend_url" {
   description = "Open this in a browser."
   value       = local.use_https ? "https://${var.domain_name}" : "http://${aws_lb.main.dns_name}"
 }
+
+output "rds_endpoint" {
+  description = "MySQL endpoint (host:port). Stored in Secrets Manager as DATABASE_URL."
+  value       = aws_db_instance.main.endpoint
+}
+
+output "rds_secret_arn" {
+  description = "Secrets Manager ARN holding DATABASE_URL."
+  value       = aws_secretsmanager_secret.database_url.arn
+}
+
+output "redeploy_lambda" {
+  description = "Lambda that redeploys ECS services on ECR push."
+  value       = aws_lambda_function.redeploy.function_name
+}

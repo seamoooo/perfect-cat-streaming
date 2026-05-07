@@ -19,6 +19,21 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_managed" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+# Allow the exec role to read the DATABASE_URL secret at task launch.
+data "aws_iam_policy_document" "ecs_secrets" {
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.database_url.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "ecs_execution_secrets" {
+  name   = "secrets-read"
+  role   = aws_iam_role.ecs_execution.id
+  policy = data.aws_iam_policy_document.ecs_secrets.json
+}
+
 # --- Task role: backend writes to S3 (publisher) ---
 resource "aws_iam_role" "backend_task" {
   name               = "${local.name_prefix}-backend-task"

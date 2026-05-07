@@ -16,10 +16,14 @@ type Config struct {
 	// S3 publishing (optional). When S3Bucket is non-empty the transcoder
 	// uploads HLS to S3 after each job and stores the CloudFront playlist URL
 	// on the Video. Otherwise the local /media route serves the files.
-	S3Bucket    string
-	S3Prefix    string
-	S3Region    string
+	S3Bucket     string
+	S3Prefix     string
+	S3Region     string
 	MediaBaseURL string // e.g. https://d1234.cloudfront.net
+
+	// Postgres DSN. When set, the backend uses RDS-backed metadata storage.
+	// Empty = in-memory + JSON (local dev mode).
+	DatabaseURL string
 }
 
 func Load() Config {
@@ -34,6 +38,7 @@ func Load() Config {
 		S3Prefix:       getenv("S3_HLS_PREFIX", "hls"),
 		S3Region:       getenv("S3_REGION", ""),
 		MediaBaseURL:   getenv("MEDIA_BASE_URL", ""),
+		DatabaseURL:    getenv("DATABASE_URL", ""),
 	}
 }
 

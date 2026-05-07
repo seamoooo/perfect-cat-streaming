@@ -27,10 +27,24 @@ func main() {
 		log.Fatalf("storage init failed: %v", err)
 	}
 
-	repoFile := filepath.Join(filepath.Dir(cfg.UploadDir), "metadata.json")
-	repo, err := repository.NewMemory(repoFile)
-	if err != nil {
-		log.Fatalf("repository init failed: %v", err)
+	var repo repository.Repository
+	if cfg.DatabaseURL != "" {
+		dbCtx, dbCancel := context.WithTimeout(context.Background(), 60*time.Second)
+		my, err := repository.NewMySQL(dbCtx, cfg.DatabaseURL)
+		dbCancel()
+		if err != nil {
+			log.Fatalf("mysql init failed: %v", err)
+		}
+		repo = my
+		log.Printf("[repository] mysql mode")
+	} else {
+		repoFile := filepath.Join(filepath.Dir(cfg.UploadDir), "metadata.json")
+		mem, err := repository.NewMemory(repoFile)
+		if err != nil {
+			log.Fatalf("repository init failed: %v", err)
+		}
+		repo = mem
+		log.Printf("[repository] in-memory mode (file=%s)", repoFile)
 	}
 
 	tx := transcoder.New(cfg.FFmpegBin)

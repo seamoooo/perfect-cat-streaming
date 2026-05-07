@@ -82,6 +82,39 @@ variable "log_retention_days" {
   default = 14
 }
 
+# --- RDS ---
+variable "db_instance_class" {
+  type    = string
+  default = "db.t4g.micro"
+}
+
+variable "db_allocated_storage" {
+  type    = number
+  default = 20
+}
+
+variable "db_engine_version" {
+  description = "MySQL engine version on RDS."
+  type        = string
+  default     = "8.0.39"
+}
+
+variable "db_name" {
+  type    = string
+  default = "perfectcat"
+}
+
+variable "db_username" {
+  type    = string
+  default = "perfectcat"
+}
+
+variable "image_tag" {
+  description = "Tag pushed to ECR; auto-redeploy watches for this tag."
+  type        = string
+  default     = "latest"
+}
+
 # Optional HTTPS — set both to enable TLS on the ALB and CloudFront alias.
 variable "domain_name" {
   description = "Custom domain (e.g. cats.example.com). Empty = HTTP-only ALB and *.cloudfront.net for CDN."

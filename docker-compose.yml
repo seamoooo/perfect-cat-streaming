@@ -10,11 +10,37 @@ services:
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
       FFMPEG_BIN: ${FFMPEG_BIN:-ffmpeg}
+      DATABASE_URL: ${DATABASE_URL:-mysql://perfectcat:perfectcat@db:3306/perfectcat?parseTime=true&loc=UTC&charset=utf8mb4}
     volumes:
       - ${HOST_DATA_DIR:-./data}:/var/app/data
     ports:
       - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      schema:
+        condition: service_completed_successfully
     restart: unless-stopped
+
+  schema:
+    build:
+      context: ./infra/schema
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./infra/schema:/schema:ro
+    command:
+      - "-h"
+      - "db"
+      - "-P"
+      - "3306"
+      - "-u"
+      - "${MYSQL_USER:-perfectcat}"
+      - "-p${MYSQL_PASSWORD:-perfectcat}"
+      - "${MYSQL_DATABASE:-perfectcat}"
+      - "--file=/schema/schema.sql"
+    restart: "no"
 
   frontend:
     build:
@@ -29,3 +55,29 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-authentication-plugin=caching_sha2_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-perfectcat}
+      MYSQL_USER: ${MYSQL_USER:-perfectcat}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-perfectcat}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  mysql-data:

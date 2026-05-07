@@ -1,0 +1,37 @@
+# env
+.env
+.env.local
+*.env.local
+
+# data (host-mounted volumes)
+/data/uploads/*
+/data/hls/*
+!/data/uploads/.gitkeep
+!/data/hls/.gitkeep
+/data/metadata.json
+
+# backend
+/backend/server
+/backend/dist/
+/backend/.air.toml
+
+# frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/.vite/
+
+# terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+!**/terraform.tfvars.example
+**/.terraform.lock.hcl
+infra/terraform/lambda/*.zip
+
+# editor / os
+.DS_Store
+.vscode/
+.idea/
+*.swp
