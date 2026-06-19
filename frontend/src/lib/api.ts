@@ -14,6 +14,15 @@ export async function getVideo(id: string): Promise<Video> {
   return res.json();
 }
 
+export async function deleteVideo(id: string): Promise<void> {
+  const res = await fetch(`${BASE}/api/videos/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`deleteVideo failed: ${res.status} ${await res.text()}`);
+  }
+}
+
 export async function uploadVideo(input: {
   file: File;
   title?: string;

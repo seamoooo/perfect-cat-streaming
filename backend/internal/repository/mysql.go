@@ -10,7 +10,9 @@ import (
 	"strings"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	// nrmysql wraps go-sql-driver/mysql so DB queries become NR datastore segments
+	// when the context carries a New Relic transaction.
+	_ "github.com/newrelic/go-agent/v3/integrations/nrmysql"
 
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/domain"
 )
@@ -19,12 +21,17 @@ type MySQL struct {
 	db *sql.DB
 }
 
+// DB exposes the raw *sql.DB for components that need direct access (e.g. the
+// chaos package's SELECT SLEEP() bursts). Treat with care — the rest of the
+// app should go through Repository methods.
+func (m *MySQL) DB() *sql.DB { return m.db }
+
 func NewMySQL(ctx context.Context, dsn string) (*MySQL, error) {
 	driverDSN, err := normalizeMySQLDSN(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("mysql dsn: %w", err)
 	}
-	db, err := sql.Open("mysql", driverDSN)
+	db, err := sql.Open("nrmysql", driverDSN)
 	if err != nil {
 		return nil, fmt.Errorf("mysql open: %w", err)
 	}
@@ -51,30 +58,44 @@ func NewMySQL(ctx context.Context, dsn string) (*MySQL, error) {
 	}
 
 	m := &MySQL{db: db}
-	// Schema is managed externally via mysqldef (see infra/schema/schema.sql).
-	// We only verify the table exists so we fail fast on misconfiguration.
-	if err := m.assertSchema(ctx); err != nil {
-		return nil, fmt.Errorf("mysql schema check: %w (run `make schema-apply` first)", err)
+	// Ensure the schema exists. This mirrors infra/schema/schema.sql so a fresh
+	// RDS instance (private subnet, unreachable from a laptop) becomes usable on
+	// first boot with no manual `mysqldef` step. sqldef remains the source of
+	// truth for richer changes locally; this is the idempotent prod bootstrap.
+	if err := m.ensureSchema(ctx); err != nil {
+		return nil, fmt.Errorf("mysql schema ensure: %w", err)
 	}
 	if err := m.seedIfEmpty(ctx); err != nil {
-		return nil, fmt.Errorf("mysql seed: %w", err)
+		return nil, fmt.Errorf("mysql seed: %w (table exists but seeding failed — likely permission or schema drift)", err)
 	}
 	return m, nil
 }
 
-// assertSchema sanity-checks that the expected tables exist. The actual DDL
-// lives in infra/schema/schema.sql and is applied by `mysqldef`.
-func (m *MySQL) assertSchema(ctx context.Context) error {
-	var n int
-	err := m.db.QueryRowContext(ctx, `
-SELECT COUNT(*) FROM information_schema.tables
-WHERE table_schema = DATABASE() AND table_name = 'videos'
-`).Scan(&n)
-	if err != nil {
+// ensureSchema creates the `videos` table if it doesn't exist. Kept in sync
+// with infra/schema/schema.sql (the declarative source of truth applied by
+// mysqldef for non-trivial migrations). CREATE TABLE IF NOT EXISTS is a no-op
+// when the table is already present, so this is safe to run on every startup.
+func (m *MySQL) ensureSchema(ctx context.Context) error {
+	const ddl = `
+CREATE TABLE IF NOT EXISTS ` + "`videos`" + ` (
+    ` + "`id`" + `           VARCHAR(64)  NOT NULL,
+    ` + "`title`" + `        VARCHAR(255) NOT NULL,
+    ` + "`description`" + `  TEXT         NOT NULL,
+    ` + "`cat_name`" + `     VARCHAR(64)  NOT NULL,
+    ` + "`breed`" + `        VARCHAR(32)  NOT NULL,
+    ` + "`tags`" + `         JSON         NOT NULL,
+    ` + "`duration_sec`" + ` DOUBLE       NOT NULL DEFAULT 0,
+    ` + "`status`" + `       VARCHAR(32)  NOT NULL,
+    ` + "`error_msg`" + `    TEXT         NOT NULL,
+    ` + "`playlist_url`" + ` TEXT         NOT NULL,
+    ` + "`created_at`" + `   DATETIME(6)  NOT NULL,
+    ` + "`updated_at`" + `   DATETIME(6)  NOT NULL,
+    PRIMARY KEY (` + "`id`" + `),
+    INDEX ` + "`videos_created_at_idx`" + ` (` + "`created_at`" + `),
+    INDEX ` + "`videos_status_idx`" + `     (` + "`status`" + `)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;`
+	if _, err := m.db.ExecContext(ctx, ddl); err != nil {
 		return err
-	}
-	if n == 0 {
-		return errors.New("table 'videos' missing")
 	}
 	return nil
 }
@@ -132,19 +153,19 @@ func (m *MySQL) seedIfEmpty(ctx context.Context) error {
 		},
 	}
 	for _, v := range seeds {
-		if err := m.Create(v); err != nil {
+		if err := m.Create(ctx, v); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (m *MySQL) Create(v domain.Video) error {
+func (m *MySQL) Create(ctx context.Context, v domain.Video) error {
 	tags, err := json.Marshal(v.Tags)
 	if err != nil {
 		return err
 	}
-	_, err = m.db.ExecContext(context.Background(), `
+	_, err = m.db.ExecContext(ctx, `
 INSERT INTO videos (id, title, description, cat_name, breed, tags, duration_sec, status, error_msg, playlist_url, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		v.ID, v.Title, v.Description, v.CatName, string(v.Breed), tags, v.DurationSec,
@@ -153,8 +174,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 	return err
 }
 
-func (m *MySQL) Get(id string) (domain.Video, bool) {
-	row := m.db.QueryRowContext(context.Background(), `
+func (m *MySQL) Get(ctx context.Context, id string) (domain.Video, bool) {
+	row := m.db.QueryRowContext(ctx, `
 SELECT id, title, description, cat_name, breed, tags, duration_sec, status, error_msg, playlist_url, created_at, updated_at
 FROM videos WHERE id = ?`, id)
 	v, err := mysqlScan(row)
@@ -167,8 +188,8 @@ FROM videos WHERE id = ?`, id)
 	return v, true
 }
 
-func (m *MySQL) List() []domain.Video {
-	rows, err := m.db.QueryContext(context.Background(), `
+func (m *MySQL) List(ctx context.Context) []domain.Video {
+	rows, err := m.db.QueryContext(ctx, `
 SELECT id, title, description, cat_name, breed, tags, duration_sec, status, error_msg, playlist_url, created_at, updated_at
 FROM videos ORDER BY created_at DESC`)
 	if err != nil {
@@ -186,15 +207,41 @@ FROM videos ORDER BY created_at DESC`)
 	return out
 }
 
-func (m *MySQL) UpdateStatus(id string, status domain.Status, errMsg string) error {
-	_, err := m.db.ExecContext(context.Background(), `
+func (m *MySQL) UpdateStatus(ctx context.Context, id string, status domain.Status, errMsg string) error {
+	_, err := m.db.ExecContext(ctx, `
 UPDATE videos SET status = ?, error_msg = ?, updated_at = ? WHERE id = ?`,
 		string(status), errMsg, time.Now().UTC(), id)
 	return err
 }
 
-func (m *MySQL) UpdateAfterTranscode(id string, durationSec float64, playlistURL string) error {
-	_, err := m.db.ExecContext(context.Background(), `
+func (m *MySQL) UpdateTags(ctx context.Context, id string, tags []string) error {
+	if tags == nil {
+		tags = []string{}
+	}
+	b, err := json.Marshal(tags)
+	if err != nil {
+		return err
+	}
+	_, err = m.db.ExecContext(ctx, `
+UPDATE videos SET tags = ?, updated_at = ? WHERE id = ?`,
+		b, time.Now().UTC(), id)
+	return err
+}
+
+func (m *MySQL) Delete(ctx context.Context, id string) error {
+	res, err := m.db.ExecContext(ctx, `DELETE FROM videos WHERE id = ?`, id)
+	if err != nil {
+		return err
+	}
+	n, _ := res.RowsAffected()
+	if n == 0 {
+		return errors.New("not found")
+	}
+	return nil
+}
+
+func (m *MySQL) UpdateAfterTranscode(ctx context.Context, id string, durationSec float64, playlistURL string) error {
+	_, err := m.db.ExecContext(ctx, `
 UPDATE videos
 SET duration_sec = ?, playlist_url = ?, status = ?, error_msg = '', updated_at = ?
 WHERE id = ?`,

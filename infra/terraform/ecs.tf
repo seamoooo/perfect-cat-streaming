@@ -36,10 +36,18 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "S3_HLS_PREFIX", value = "hls" },
       { name = "S3_REGION", value = var.region },
       { name = "MEDIA_BASE_URL", value = length(local.cloudfront_alias) > 0 ? "https://${local.cloudfront_alias[0]}" : "https://${aws_cloudfront_distribution.media.domain_name}" },
+      { name = "NEW_RELIC_APP_NAME", value = var.new_relic_app_name },
+      { name = "APP_ENV", value = var.environment },
+      { name = "NEW_RELIC_AI_MONITORING_ENABLED", value = tostring(var.new_relic_ai_monitoring_enabled) },
+      { name = "NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES_STORED", value = tostring(var.new_relic_custom_events_max_samples) },
+      { name = "NEW_RELIC_AI_MONITORING_STREAMING_ENABLED", value = tostring(var.new_relic_ai_monitoring_streaming_enabled) },
     ]
-    secrets = [
-      { name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn },
-    ]
+    secrets = concat(
+      [{ name = "DATABASE_URL", valueFrom = aws_secretsmanager_secret.database_url.arn }],
+      local.new_relic_enabled ? [
+        { name = "NEW_RELIC_LICENSE_KEY", valueFrom = aws_secretsmanager_secret.new_relic_license[0].arn },
+      ] : [],
+    )
     logConfiguration = {
       logDriver = "awslogs"
       options = {

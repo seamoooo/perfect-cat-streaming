@@ -115,6 +115,45 @@ variable "image_tag" {
   default     = "latest"
 }
 
+# --- New Relic APM (optional) ---
+variable "new_relic_license_key" {
+  description = "New Relic ingest license key. Leave empty to ship the backend with APM disabled."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "new_relic_app_name" {
+  description = "App name shown in New Relic. The environment suffix is appended automatically."
+  type        = string
+  default     = "PerfectCatStreaming"
+}
+
+variable "new_relic_ai_monitoring_enabled" {
+  description = "Toggle ConfigAIMonitoringEnabled in the Go agent (LLM observability)."
+  type        = bool
+  default     = false
+}
+
+variable "new_relic_custom_events_max_samples" {
+  description = "Sample cap for the CustomInsightsEvents buffer (NR recommends 10000 for AI workloads)."
+  type        = number
+  default     = 10000
+}
+
+variable "new_relic_ai_monitoring_streaming_enabled" {
+  description = "AIMonitoring.Streaming.Enabled — picked up directly by the agent from this env var."
+  type        = bool
+  default     = false
+}
+
+variable "new_relic_user_api_key" {
+  description = "Optional User key (NRAK-*) — not used by the Go agent; stored in Secrets Manager for NerdGraph / Terraform NR provider use."
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
 # Optional HTTPS — set both to enable TLS on the ALB and CloudFront alias.
 variable "domain_name" {
   description = "Custom domain (e.g. cats.example.com). Empty = HTTP-only ALB and *.cloudfront.net for CDN."

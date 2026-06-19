@@ -1,0 +1,9 @@
+# Local media/metadata artifacts — never bake into the image.
+data
+metadata.json
+
+# Local env & noise
+.env
+.env.*
+*.log
+.DS_Store

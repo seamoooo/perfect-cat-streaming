@@ -14,7 +14,22 @@ backend_memory = 2048
 backend_desired_count  = 1
 frontend_desired_count = 1
 
-# Optional HTTPS (leave blank for HTTP-only)
-# domain_name                    = "cats.example.com"
+# Optional HTTPS + custom domain (leave blank for HTTP-only via ALB DNS name).
+# If you registered the domain in Route53 (Registered domains → Register domain),
+# just set domain_name below — Terraform creates and DNS-validates the ACM certs
+# (ALB + CloudFront/us-east-1) and the Route53 alias records automatically:
+#   apex   <domain>        → ALB (frontend + /api/*)
+#   www.<domain>           → ALB
+#   media.<domain>         → CloudFront (HLS)
+# domain_name = "example.com"
+#
+# Only set these to bring your OWN pre-issued certs (skips auto-creation):
 # acm_certificate_arn_alb        = "arn:aws:acm:ap-northeast-1:123456789012:certificate/..."
 # acm_certificate_arn_cloudfront = "arn:aws:acm:us-east-1:123456789012:certificate/..."
+
+# Optional New Relic APM (leave blank to ship the backend with the agent
+# disabled — no data leaves the task).
+# Prefer to pass via TF_VAR_new_relic_license_key in the environment so it
+# doesn't get committed.
+# new_relic_license_key = "abcdef0123456789abcdef0123456789abcdNRAL"
+# new_relic_app_name    = "perfect-cat-streaming-backend"

@@ -33,8 +33,8 @@ func newTestServer(t *testing.T) *httptest.Server {
 		t.Fatal(err)
 	}
 	tx := transcoder.New(cfg.FFmpegBin)
-	q := transcoder.NewQueue(tx, repo, stg, nil, 1)
-	return httptest.NewServer(httpx.NewRouter(cfg, repo, stg, q))
+	q := transcoder.NewQueue(tx, repo, stg, nil, nil, 1)
+	return httptest.NewServer(httpx.NewRouter(cfg, nil, nil, repo, stg, nil, q))
 }
 
 func TestHealthz(t *testing.T) {

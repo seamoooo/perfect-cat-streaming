@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getVideo } from "../lib/api";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { deleteVideo, getVideo } from "../lib/api";
+import { Layout } from "../components/Layout";
 import { KanpachiPlayer } from "../components/player/KanpachiPlayer";
 import type { Video } from "../types/video";
 import type { KanpachiSink } from "../lib/telemetry";
@@ -12,8 +13,10 @@ interface Props {
 
 export function VideoDetailPage({ sink, sessionId }: Props) {
   const { id = "" } = useParams();
+  const navigate = useNavigate();
   const [video, setVideo] = useState<Video | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -31,19 +34,32 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
     };
   }, [id]);
 
+  const onDeleteClick = async () => {
+    if (!video || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteVideo(video.id);
+      navigate("/videos");
+    } catch (e) {
+      window.alert(`削除失敗: ${e instanceof Error ? e.message : String(e)}`);
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
+    <Layout>
       <p>
-        <Link to="/">← 一覧へ戻る</Link>
+        <Link to="/videos">← 一覧へ戻る</Link>
       </p>
-      {error && <p style={{ color: "salmon" }}>エラー: {error}</p>}
+      {error && <p className="error-text">エラー: {error}</p>}
       {!video && !error && <p>読み込み中…</p>}
       {video && (
         <>
           <header style={{ marginBottom: 16 }}>
             <h1 style={{ margin: 0 }}>{video.title}</h1>
             <p style={{ marginTop: 4, opacity: 0.8 }}>
-              {video.catName} ({video.breed}){video.description ? ` — ${video.description}` : ""}
+              {video.catName} ({video.breed})
+              {video.description ? ` — ${video.description}` : ""}
             </p>
           </header>
 
@@ -67,8 +83,37 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
               {video.errorMsg ? ` — ${video.errorMsg}` : ""}
             </p>
           )}
+
+          <div
+            style={{
+              marginTop: 32,
+              paddingTop: 16,
+              borderTop: "1px solid var(--card-border)",
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              justifyContent: "flex-end",
+            }}
+          >
+            <button
+              type="button"
+              onClick={onDeleteClick}
+              disabled={deleting}
+              style={{
+                background: deleting ? "#777" : "#c03838",
+                color: "#fff",
+                border: "none",
+                padding: "8px 16px",
+                borderRadius: 6,
+                fontWeight: 600,
+                cursor: deleting ? "wait" : "pointer",
+              }}
+            >
+              🗑 {deleting ? "削除中…" : "この動画を削除"}
+            </button>
+          </div>
         </>
       )}
-    </div>
+    </Layout>
   );
 }

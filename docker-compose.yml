@@ -11,6 +11,28 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8000}
       FFMPEG_BIN: ${FFMPEG_BIN:-ffmpeg}
       DATABASE_URL: ${DATABASE_URL:-mysql://perfectcat:perfectcat@db:3306/perfectcat?parseTime=true&loc=UTC&charset=utf8mb4}
+      NEW_RELIC_LICENSE_KEY: ${NEW_RELIC_LICENSE_KEY:-}
+      NEW_RELIC_APP_NAME: ${NEW_RELIC_APP_NAME:-PerfectCatStreaming}
+      NEW_RELIC_LOG_LEVEL: ${NEW_RELIC_LOG_LEVEL:-}
+      APP_ENV: ${APP_ENV:-dev}
+      NEW_RELIC_AI_MONITORING_ENABLED: ${NEW_RELIC_AI_MONITORING_ENABLED:-false}
+      NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES_STORED: ${NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES_STORED:-10000}
+      NEW_RELIC_AI_MONITORING_STREAMING_ENABLED: ${NEW_RELIC_AI_MONITORING_STREAMING_ENABLED:-false}
+      # Force HTTP/1.1 for NR ingest — Docker Desktop on macOS sometimes drops
+      # large HTTP/2 POSTs to Cloudflare-fronted origins (causes the agent's
+      # `connect` to fail with EOF).
+      GODEBUG: ${GODEBUG:-http2client=0}
+      # Chaos (NR troubleshooting demo). Default off; flip via .env.
+      CHAOS_ENABLED: ${CHAOS_ENABLED:-false}
+      CHAOS_PERIOD_SEC: ${CHAOS_PERIOD_SEC:-300}
+      CHAOS_WINDOW_SEC: ${CHAOS_WINDOW_SEC:-60}
+      CHAOS_LATENCY_CHANCE_PERCENT: ${CHAOS_LATENCY_CHANCE_PERCENT:-40}
+      CHAOS_LATENCY_MIN_MS: ${CHAOS_LATENCY_MIN_MS:-500}
+      CHAOS_LATENCY_MAX_MS: ${CHAOS_LATENCY_MAX_MS:-2000}
+      CHAOS_ERROR_CHANCE_PERCENT: ${CHAOS_ERROR_CHANCE_PERCENT:-0}
+      CHAOS_DB_SLOW_PERIOD_SEC: ${CHAOS_DB_SLOW_PERIOD_SEC:-0}
+      CHAOS_DB_SLOW_QUERY_SEC: ${CHAOS_DB_SLOW_QUERY_SEC:-5}
+      CHAOS_DB_SLOW_CONCURRENCY: ${CHAOS_DB_SLOW_CONCURRENCY:-3}
     volumes:
       - ${HOST_DATA_DIR:-./data}:/var/app/data
     ports:
@@ -50,6 +72,10 @@ services:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
         VITE_NEW_RELIC_LICENSE_KEY: ${VITE_NEW_RELIC_LICENSE_KEY:-}
         VITE_NEW_RELIC_APP_ID: ${VITE_NEW_RELIC_APP_ID:-}
+        VITE_NEW_RELIC_ACCOUNT_ID: ${VITE_NEW_RELIC_ACCOUNT_ID:-}
+        VITE_NEW_RELIC_TRUST_KEY: ${VITE_NEW_RELIC_TRUST_KEY:-}
+        VITE_NEW_RELIC_AGENT_ID: ${VITE_NEW_RELIC_AGENT_ID:-}
+        VITE_PLAYER_CHAOS_ERROR_RATE: ${VITE_PLAYER_CHAOS_ERROR_RATE:-0.2}
     ports:
       - "8000:80"
     depends_on:

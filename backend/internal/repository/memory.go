@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"os"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/domain"
 )
+
+var _ = context.Background // ctx-aware interface; Memory ignores ctx
 
 // Memory is an in-memory repo with optional JSON persistence at filePath.
 // Adequate for MVP; replace with a real DB later by satisfying repository.Repository.
@@ -102,7 +105,7 @@ func (m *Memory) seedIfEmpty() {
 	_ = m.flush()
 }
 
-func (m *Memory) Create(v domain.Video) error {
+func (m *Memory) Create(_ context.Context, v domain.Video) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if _, ok := m.items[v.ID]; ok {
@@ -112,14 +115,14 @@ func (m *Memory) Create(v domain.Video) error {
 	return m.flush()
 }
 
-func (m *Memory) Get(id string) (domain.Video, bool) {
+func (m *Memory) Get(_ context.Context, id string) (domain.Video, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	v, ok := m.items[id]
 	return v, ok
 }
 
-func (m *Memory) List() []domain.Video {
+func (m *Memory) List(_ context.Context) []domain.Video {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	out := make([]domain.Video, 0, len(m.items))
@@ -130,7 +133,7 @@ func (m *Memory) List() []domain.Video {
 	return out
 }
 
-func (m *Memory) UpdateStatus(id string, status domain.Status, errMsg string) error {
+func (m *Memory) UpdateStatus(_ context.Context, id string, status domain.Status, errMsg string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	v, ok := m.items[id]
@@ -144,7 +147,33 @@ func (m *Memory) UpdateStatus(id string, status domain.Status, errMsg string) er
 	return m.flush()
 }
 
-func (m *Memory) UpdateAfterTranscode(id string, durationSec float64, playlistURL string) error {
+func (m *Memory) UpdateTags(_ context.Context, id string, tags []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	v, ok := m.items[id]
+	if !ok {
+		return errors.New("not found")
+	}
+	if tags == nil {
+		tags = []string{}
+	}
+	v.Tags = tags
+	v.UpdatedAt = time.Now().UTC()
+	m.items[id] = v
+	return m.flush()
+}
+
+func (m *Memory) Delete(_ context.Context, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.items[id]; !ok {
+		return errors.New("not found")
+	}
+	delete(m.items, id)
+	return m.flush()
+}
+
+func (m *Memory) UpdateAfterTranscode(_ context.Context, id string, durationSec float64, playlistURL string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	v, ok := m.items[id]

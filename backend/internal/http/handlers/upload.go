@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/newrelic/go-agent/v3/newrelic"
 
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/config"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/domain"
@@ -68,7 +69,7 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
-	if err := h.Repo.Create(v); err != nil {
+	if err := h.Repo.Create(r.Context(), v); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -78,7 +79,19 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		SrcPath:  dst,
 		OutDir:   h.Stg.HLSDir(id),
 		Playlist: fmt.Sprintf("%s/media/%s/index.m3u8", strings.TrimRight(h.Cfg.PublicBaseURL, "/"), id),
+		CatName:  v.CatName,
+		Breed:    string(v.Breed),
 	})
+
+	// Domain custom attributes on the upload web transaction.
+	if txn := newrelic.FromContext(r.Context()); txn != nil {
+		txn.AddAttribute("video.id", id)
+		txn.AddAttribute("cat.name", v.CatName)
+		txn.AddAttribute("cat.breed", string(v.Breed))
+		txn.AddAttribute("upload.size_bytes", fh.Size)
+		txn.AddAttribute("upload.content_type", fh.Header.Get("Content-Type"))
+		txn.AddAttribute("video.tag_count", len(v.Tags))
+	}
 
 	log.Printf("[upload] queued videoID=%s catName=%s breed=%s size=%d", id, v.CatName, v.Breed, fh.Size)
 

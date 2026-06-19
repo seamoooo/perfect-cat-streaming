@@ -34,3 +34,11 @@ func (l *Local) HLSDir(videoID string) string {
 func (l *Local) PlaylistPath(videoID string) string {
 	return filepath.Join(l.HLSDir(videoID), "index.m3u8")
 }
+
+func (l *Local) RemoveVideo(videoID string) error {
+	matches, _ := filepath.Glob(filepath.Join(l.UploadRoot, videoID+"_*"))
+	for _, p := range matches {
+		_ = os.Remove(p)
+	}
+	return os.RemoveAll(l.HLSDir(videoID))
+}

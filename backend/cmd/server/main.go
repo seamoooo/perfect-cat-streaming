@@ -11,8 +11,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/seamoooo/perfect-cat-streaming/backend/internal/chaos"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/config"
 	httpx "github.com/seamoooo/perfect-cat-streaming/backend/internal/http"
+	"github.com/seamoooo/perfect-cat-streaming/backend/internal/janitor"
+	"github.com/seamoooo/perfect-cat-streaming/backend/internal/observability"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/publisher"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/repository"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/storage"
@@ -21,6 +24,12 @@ import (
 
 func main() {
 	cfg := config.Load()
+
+	nrApp, err := observability.NewRelic(cfg)
+	if err != nil {
+		log.Fatalf("newrelic init failed: %v", err)
+	}
+	defer nrApp.Shutdown(10 * time.Second)
 
 	stg := storage.NewLocal(cfg.UploadDir, cfg.HLSDir)
 	if err := stg.EnsureDirs(); err != nil {
@@ -69,12 +78,48 @@ func main() {
 		log.Printf("[publisher] local mode (no S3)")
 	}
 
-	queue := transcoder.NewQueue(tx, repo, stg, pub, 32)
+	queue := transcoder.NewQueue(tx, repo, stg, pub, nrApp, 32)
 	queue.Start(rootCtx, 2)
+
+	// Daily janitor for the local ephemeral disk. Only in S3 mode, where the
+	// published HLS/poster files are redundant locally; in local mode these ARE
+	// the served media so we must never delete them.
+	if pub != nil && !cfg.LocalCleanupDisabled {
+		jan := janitor.New(
+			cfg.UploadDir, cfg.HLSDir,
+			time.Duration(cfg.LocalCleanupTTLHours)*time.Hour,
+			time.Duration(cfg.LocalCleanupIntervalHours)*time.Hour,
+			nrApp,
+		)
+		jan.Start(rootCtx)
+		log.Printf("[janitor] enabled ttl=%dh interval=%dh", cfg.LocalCleanupTTLHours, cfg.LocalCleanupIntervalHours)
+	}
+
+	// Chaos: opt-in synthetic perf degradation, labelled in NR for easy
+	// drill-down. No-op when CHAOS_ENABLED is false.
+	ch := chaos.New(chaos.Config{
+		Enabled:              cfg.ChaosEnabled,
+		Period:               time.Duration(cfg.ChaosPeriodSec) * time.Second,
+		Window:               time.Duration(cfg.ChaosWindowSec) * time.Second,
+		LatencyChancePercent: cfg.ChaosLatencyChancePercent,
+		LatencyMin:           time.Duration(cfg.ChaosLatencyMinMs) * time.Millisecond,
+		LatencyMax:           time.Duration(cfg.ChaosLatencyMaxMs) * time.Millisecond,
+		ErrorChancePercent:   cfg.ChaosErrorChancePercent,
+		DBSlowPeriod:         time.Duration(cfg.ChaosDBSlowPeriodSec) * time.Second,
+		DBSlowQuerySec:       cfg.ChaosDBSlowQuerySec,
+		DBSlowConcurrency:    cfg.ChaosDBSlowConcurrency,
+	}, nrApp)
+	if cfg.ChaosEnabled {
+		log.Printf("[chaos] ENABLED — synthetic perf degradation active")
+		ch.StartSpikeScheduler(rootCtx)
+		if my, ok := repo.(*repository.MySQL); ok {
+			ch.StartDBPressure(rootCtx, my.DB())
+		}
+	}
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.AppPort,
-		Handler:           httpx.NewRouter(cfg, repo, stg, queue),
+		Handler:           httpx.NewRouter(cfg, nrApp, ch, repo, stg, pub, queue),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

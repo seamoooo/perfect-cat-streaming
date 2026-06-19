@@ -1,0 +1,77 @@
+name: deploy
+
+# Build & push images to ECR, then record a New Relic Change Tracking marker.
+# Pushing :latest to ECR triggers the existing EventBridge -> Lambda rule, which
+# calls ecs:UpdateService(forceNewDeployment=true), so ECS rolls out the new
+# image automatically. This workflow does NOT call ECS directly.
+#
+# One-time setup (see infra/terraform/README.md):
+#   - terraform apply (creates ECR repos + the GitHub OIDC deploy role)
+#   - GitHub repo secret  AWS_DEPLOY_ROLE_ARN        = terraform output github_actions_role_arn
+#   - GitHub repo secret  NEW_RELIC_USER_API_KEY     = NRAK-... (optional, for change tracking)
+#   - GitHub repo variable NEW_RELIC_APP_NAME        = e.g. "PerfectCatStreaming (dev)"
+#   - GitHub repo variable NEW_RELIC_REGION          = US | EU (optional, default US)
+#   - Frontend browser-agent build args as secrets/vars (optional, see below)
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # required for AWS OIDC
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-1
+  ENV_NAME: dev
+  # Exposed so the change-tracking step's `if:` can test for its presence.
+  NEW_RELIC_USER_API_KEY: ${{ secrets.NEW_RELIC_USER_API_KEY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version (git short sha)
+        id: ver
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & push images
+        run: ./scripts/push-images.sh --env "$ENV_NAME" --region "$AWS_REGION" -y
+        env:
+          # Frontend build-time config (all optional; browser agent stays off
+          # unless the 5 New Relic values are all set).
+          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_NEW_RELIC_LICENSE_KEY: ${{ secrets.VITE_NEW_RELIC_LICENSE_KEY }}
+          VITE_NEW_RELIC_APP_ID: ${{ vars.VITE_NEW_RELIC_APP_ID }}
+          VITE_NEW_RELIC_ACCOUNT_ID: ${{ vars.VITE_NEW_RELIC_ACCOUNT_ID }}
+          VITE_NEW_RELIC_TRUST_KEY: ${{ vars.VITE_NEW_RELIC_TRUST_KEY }}
+          VITE_NEW_RELIC_AGENT_ID: ${{ vars.VITE_NEW_RELIC_AGENT_ID }}
+          VITE_PLAYER_CHAOS_ERROR_RATE: ${{ vars.VITE_PLAYER_CHAOS_ERROR_RATE }}
+
+      - name: New Relic Change Tracking
+        if: ${{ env.NEW_RELIC_USER_API_KEY != '' }}
+        continue-on-error: true
+        run: ./scripts/newrelic-change-tracking.sh
+        env:
+          NEW_RELIC_APP_NAME: ${{ vars.NEW_RELIC_APP_NAME }}
+          NEW_RELIC_REGION: ${{ vars.NEW_RELIC_REGION }}
+          VERSION: ${{ steps.ver.outputs.sha_short }}
+          COMMIT_SHA: ${{ github.sha }}
+          NR_DEPLOY_DESCRIPTION: ${{ github.event.head_commit.message }}
+          NR_DEPLOY_USER: ${{ github.actor }}

@@ -8,4 +8,8 @@ type Storage interface {
 	HLSDir(videoID string) string
 	PlaylistPath(videoID string) string
 	EnsureDirs() error
+	// RemoveVideo cleans local upload + HLS artefacts for a videoID. Errors
+	// from individual files are silently ignored — best-effort cleanup. The
+	// caller is responsible for any remote / S3 deletion.
+	RemoveVideo(videoID string) error
 }

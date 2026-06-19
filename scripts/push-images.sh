@@ -15,6 +15,10 @@ REGION="${AWS_REGION:-${AWS_DEFAULT_REGION:-ap-northeast-1}}"
 VITE_API_BASE_URL="${VITE_API_BASE_URL:-}"
 VITE_NEW_RELIC_LICENSE_KEY="${VITE_NEW_RELIC_LICENSE_KEY:-}"
 VITE_NEW_RELIC_APP_ID="${VITE_NEW_RELIC_APP_ID:-}"
+VITE_NEW_RELIC_ACCOUNT_ID="${VITE_NEW_RELIC_ACCOUNT_ID:-}"
+VITE_NEW_RELIC_TRUST_KEY="${VITE_NEW_RELIC_TRUST_KEY:-}"
+VITE_NEW_RELIC_AGENT_ID="${VITE_NEW_RELIC_AGENT_ID:-}"
+VITE_PLAYER_CHAOS_ERROR_RATE="${VITE_PLAYER_CHAOS_ERROR_RATE:-}"
 ASSUME_YES=0
 
 usage() {
@@ -64,7 +68,12 @@ for cmd in aws docker; do
   command -v "$cmd" >/dev/null 2>&1 || { echo "ERROR: $cmd not in PATH" >&2; exit 1; }
 done
 
-cd "$(git rev-parse --show-toplevel 2>/dev/null || dirname "$0")/.."
+# Run from the repo root so ./backend and ./frontend resolve.
+if repo_root="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  cd "$repo_root"
+else
+  cd "$(dirname "$0")/.."
+fi
 
 ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
 REGISTRY="$ACCOUNT.dkr.ecr.$REGION.amazonaws.com"
@@ -122,6 +131,10 @@ if [[ "$SERVICE" == "all" || "$SERVICE" == "frontend" ]]; then
     --build-arg VITE_API_BASE_URL="$VITE_API_BASE_URL" \
     --build-arg VITE_NEW_RELIC_LICENSE_KEY="$VITE_NEW_RELIC_LICENSE_KEY" \
     --build-arg VITE_NEW_RELIC_APP_ID="$VITE_NEW_RELIC_APP_ID" \
+    --build-arg VITE_NEW_RELIC_ACCOUNT_ID="$VITE_NEW_RELIC_ACCOUNT_ID" \
+    --build-arg VITE_NEW_RELIC_TRUST_KEY="$VITE_NEW_RELIC_TRUST_KEY" \
+    --build-arg VITE_NEW_RELIC_AGENT_ID="$VITE_NEW_RELIC_AGENT_ID" \
+    --build-arg VITE_PLAYER_CHAOS_ERROR_RATE="$VITE_PLAYER_CHAOS_ERROR_RATE" \
     -t "perfect-cat-frontend:$TAG" \
     ./frontend
   echo "[frontend] pushing ..."

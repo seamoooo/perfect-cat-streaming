@@ -10,6 +10,8 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	s3types "github.com/aws/aws-sdk-go-v2/service/s3/types"
+	nraws "github.com/newrelic/go-agent/v3/integrations/nrawssdk-v2"
 )
 
 type S3Config struct {
@@ -21,6 +23,7 @@ type S3Config struct {
 
 type S3 struct {
 	cfg      S3Config
+	client   *s3.Client
 	uploader *manager.Uploader
 }
 
@@ -42,8 +45,39 @@ func NewS3(ctx context.Context, c S3Config) (*S3, error) {
 	if err != nil {
 		return nil, fmt.Errorf("publisher.NewS3: load aws config: %w", err)
 	}
+	// Tap every AWS SDK call as a NR external segment when the calling ctx has
+	// a transaction. Harmless when New Relic is disabled.
+	nraws.AppendMiddlewares(&awsCfg.APIOptions, nil)
 	client := s3.NewFromConfig(awsCfg)
-	return &S3{cfg: c, uploader: manager.NewUploader(client)}, nil
+	return &S3{cfg: c, client: client, uploader: manager.NewUploader(client)}, nil
+}
+
+// DeleteHLS removes every object under <prefix>/<videoID>/. List + batch-delete.
+// Safe to call when the prefix is empty (returns nil).
+func (p *S3) DeleteHLS(ctx context.Context, videoID string) error {
+	prefix := joinKey(p.cfg.Prefix, videoID) + "/"
+	out, err := p.client.ListObjectsV2(ctx, &s3.ListObjectsV2Input{
+		Bucket: &p.cfg.Bucket,
+		Prefix: &prefix,
+	})
+	if err != nil {
+		return fmt.Errorf("list %s: %w", prefix, err)
+	}
+	if len(out.Contents) == 0 {
+		return nil
+	}
+	ids := make([]s3types.ObjectIdentifier, 0, len(out.Contents))
+	for _, o := range out.Contents {
+		ids = append(ids, s3types.ObjectIdentifier{Key: o.Key})
+	}
+	_, err = p.client.DeleteObjects(ctx, &s3.DeleteObjectsInput{
+		Bucket: &p.cfg.Bucket,
+		Delete: &s3types.Delete{Objects: ids},
+	})
+	if err != nil {
+		return fmt.Errorf("delete %s: %w", prefix, err)
+	}
+	return nil
 }
 
 // PublishHLS uploads every file in localDir to s3://bucket/<prefix>/<videoID>/<filename>
@@ -100,6 +134,10 @@ func contentTypeFor(name string) string {
 		return "video/mp2t"
 	case strings.HasSuffix(name, ".vtt"):
 		return "text/vtt"
+	case strings.HasSuffix(name, ".jpg"), strings.HasSuffix(name, ".jpeg"):
+		return "image/jpeg"
+	case strings.HasSuffix(name, ".png"):
+		return "image/png"
 	default:
 		return "application/octet-stream"
 	}

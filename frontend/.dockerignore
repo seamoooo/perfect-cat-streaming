@@ -1,0 +1,15 @@
+# Never copy host-installed deps into the image — they may be the wrong
+# platform (e.g. macOS rollup binaries) and would clobber the linux install
+# done by `npm install` in the Dockerfile.
+node_modules
+
+# Build outputs / test artifacts — regenerated inside the image.
+dist
+test-results
+playwright-report
+
+# Local env & noise
+.env
+.env.*
+npm-debug.log*
+.DS_Store

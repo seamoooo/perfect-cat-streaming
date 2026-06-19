@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { CatCard } from "../components/CatCard";
-import { useCatClips } from "../hooks/useCatClips";
+import { useNavigate } from "react-router-dom";
+import { Layout } from "../components/Layout";
 import { uploadVideo } from "../lib/api";
 
-export function GalleryPage() {
-  const { videos, loading, error, refresh } = useCatClips();
+/** Upload page — submit a new cat clip for transcoding. */
+export function UploadPage() {
+  const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -31,9 +32,8 @@ export function GalleryPage() {
           .map((t) => t.trim())
           .filter(Boolean),
       });
-      setFile(null);
-      setForm((f) => ({ ...f, title: "", description: "", tags: "" }));
-      await refresh();
+      // After upload, jump to the list so the user can watch it go ready.
+      navigate("/videos");
     } catch (err) {
       alert(`アップロード失敗: ${err instanceof Error ? err.message : err}`);
     } finally {
@@ -42,25 +42,17 @@ export function GalleryPage() {
   };
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: 24 }}>
-      <header style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0 }}>Perfect Cat Streaming</h1>
-        <p style={{ marginTop: 4, opacity: 0.75 }}>
-          Bincho（シャム）と Kanpachi（ベンガル）のための、完璧なHLSストリーミング 🐾
-        </p>
-      </header>
+    <Layout>
+      <span className="kicker">Upload</span>
+      <div className="section-head">
+        <h2>ねこチャンの動画をアップロード</h2>
+      </div>
+      <p className="muted" style={{ marginTop: -8 }}>
+        ねこちゃんの動画をアップロードできます。変換が終わると一覧から再生できます。
+      </p>
 
-      <section
-        style={{
-          background: "var(--card-bg)",
-          border: "1px solid var(--card-border)",
-          borderRadius: 12,
-          padding: 16,
-          marginBottom: 24,
-        }}
-      >
-        <h2 style={{ marginTop: 0, fontSize: 18 }}>動画をアップロード</h2>
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 8 }}>
+      <section className="card" style={{ maxWidth: 560 }}>
+        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
           <input
             type="file"
             accept="video/mp4,video/*"
@@ -86,7 +78,9 @@ export function GalleryPage() {
             />
             <select
               value={form.breed}
-              onChange={(e) => setForm({ ...form, breed: e.target.value as typeof form.breed })}
+              onChange={(e) =>
+                setForm({ ...form, breed: e.target.value as typeof form.breed })
+              }
             >
               <option value="siamese">シャム (Bincho)</option>
               <option value="bengal">ベンガル (Kanpachi)</option>
@@ -98,34 +92,15 @@ export function GalleryPage() {
             value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
           />
-          <button type="submit" disabled={!file || uploading}>
-            {uploading ? "アップロード中…" : "アップロード"}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={!file || uploading}
+          >
+            {uploading ? "アップロード中…" : "⬆ アップロード"}
           </button>
         </form>
       </section>
-
-      <section>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
-          <h2 style={{ margin: 0, fontSize: 20 }}>クリップ一覧</h2>
-          <button onClick={refresh} style={{ marginLeft: "auto" }}>
-            再読み込み
-          </button>
-        </div>
-        {loading && <p>読み込み中…</p>}
-        {error && <p style={{ color: "salmon" }}>エラー: {error}</p>}
-        {!loading && videos.length === 0 && <p>まだ動画がありません。</p>}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {videos.map((v) => (
-            <CatCard key={v.id} video={v} />
-          ))}
-        </div>
-      </section>
-    </div>
+    </Layout>
   );
 }

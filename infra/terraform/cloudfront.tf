@@ -81,7 +81,7 @@ resource "aws_cloudfront_distribution" "media" {
 
   viewer_certificate {
     cloudfront_default_certificate = length(local.cloudfront_alias) == 0
-    acm_certificate_arn            = length(local.cloudfront_alias) > 0 ? var.acm_certificate_arn_cloudfront : null
+    acm_certificate_arn            = length(local.cloudfront_alias) > 0 ? local.cloudfront_certificate_arn : null
     ssl_support_method             = length(local.cloudfront_alias) > 0 ? "sni-only" : null
     minimum_protocol_version       = length(local.cloudfront_alias) > 0 ? "TLSv1.2_2021" : "TLSv1"
   }

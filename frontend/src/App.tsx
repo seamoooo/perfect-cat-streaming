@@ -1,8 +1,14 @@
 import { useMemo } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { GalleryPage } from "./routes/GalleryPage";
+import { TopPage } from "./routes/TopPage";
+import { VideosPage } from "./routes/VideosPage";
+import { UploadPage } from "./routes/UploadPage";
 import { VideoDetailPage } from "./routes/VideoDetailPage";
-import { ConsoleKanpachiSink, NewRelicKanpachiSink, type KanpachiSink } from "./lib/telemetry";
+import {
+  ConsoleKanpachiSink,
+  NewRelicKanpachiSink,
+  type KanpachiSink,
+} from "./lib/telemetry";
 
 function chooseSink(): KanpachiSink {
   // Use New Relic when the agent is detected on window; otherwise console.
@@ -17,7 +23,8 @@ function genSessionId(): string {
   if (typeof crypto !== "undefined" && crypto.getRandomValues) {
     crypto.getRandomValues(arr);
   } else {
-    for (let i = 0; i < arr.length; i++) arr[i] = Math.floor(Math.random() * 256);
+    for (let i = 0; i < arr.length; i++)
+      arr[i] = Math.floor(Math.random() * 256);
   }
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -28,7 +35,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<GalleryPage />} />
+        <Route path="/" element={<TopPage />} />
+        <Route path="/videos" element={<VideosPage />} />
+        <Route path="/upload" element={<UploadPage />} />
         <Route
           path="/clips/:id"
           element={<VideoDetailPage sink={sink} sessionId={sessionId} />}
