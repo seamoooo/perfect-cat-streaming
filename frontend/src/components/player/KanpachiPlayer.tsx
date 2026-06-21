@@ -17,6 +17,8 @@ interface Props {
   videoMeta: VideoMeta;
   sink: KanpachiSink;
   sessionId: string;
+  /** developer demo: always trigger the simulated player error */
+  forcePlayerError?: boolean;
 }
 
 // Kanpachi (ベンガル) — instrumented player. Wraps the elegant Bincho player and
@@ -39,6 +41,7 @@ export function KanpachiPlayer({
   videoMeta,
   sink,
   sessionId,
+  forcePlayerError = false,
 }: Props) {
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const [hls, setHls] = useState<Hls | null>(null);
@@ -51,6 +54,7 @@ export function KanpachiPlayer({
     videoEl,
     hls,
     videoKey: `${videoMeta.videoId}#${reloadNonce}`,
+    force: forcePlayerError,
   });
 
   const handleReady = useCallback(

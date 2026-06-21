@@ -593,6 +593,15 @@ h3 {
   margin-bottom: -6px;
 }
 
+/* ErrorBoundary fallback (also the "frontend" chaos demo surface) */
+.error-boundary {
+  text-align: center;
+  padding: 40px 24px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: var(--card-bg, rgba(255, 255, 255, 0.02));
+}
+
 /* Upload form — responsive so inputs/selects never overflow on mobile */
 .upload-form {
   display: grid;

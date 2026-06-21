@@ -24,6 +24,7 @@ type Job struct {
 	CatName       string // domain context for New Relic custom attributes
 	Breed         string // cat breed slug
 	ThumbnailPath string // optional custom poster image; empty = auto from video frame
+	ChaosSlow     bool   // developer "SRE" demo: deliberately degrade throughput
 }
 
 type Queue struct {
@@ -98,6 +99,9 @@ func (q *Queue) process(ctx context.Context, workerID int, j Job) {
 		if fi, err := os.Stat(j.SrcPath); err == nil {
 			txn.AddAttribute("transcode.input_bytes", fi.Size())
 		}
+		if j.ChaosSlow {
+			txn.AddAttribute("chaos.injected", "sre_slow_transcode")
+		}
 		ctx = newrelic.NewContext(ctx, txn)
 	}
 
@@ -109,7 +113,7 @@ func (q *Queue) process(ctx context.Context, workerID int, j Job) {
 	defer cancel()
 
 	transcodeStart := time.Now()
-	if err := q.tx.TranscodeToHLS(jobCtx, j.SrcPath, j.OutDir); err != nil {
+	if err := q.tx.TranscodeToHLS(jobCtx, j.SrcPath, j.OutDir, j.ChaosSlow); err != nil {
 		log.Printf("[transcoder] transcode failed videoID=%s: %v", j.VideoID, err)
 		if txn != nil {
 			txn.NoticeError(err)

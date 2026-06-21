@@ -97,6 +97,11 @@ export function UploadPage() {
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
+          <p className="muted" style={{ margin: "-4px 0 0", fontSize: 12 }}>
+            開発者デモ: 説明に <code>SRE</code> / <code>player</code> /{" "}
+            <code>frontend</code> / <code>backend</code>{" "}
+            と入れると、その層に障害を注入します（New Relic 観測用）。
+          </p>
           <div className="upload-row">
             <input
               placeholder="猫の名前 (例: みけ)"

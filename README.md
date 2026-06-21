@@ -72,6 +72,21 @@ data/         host-mounted volume root
 
 実装は `frontend/src/lib/telemetry/` と `frontend/src/hooks/useKanpachiMetrics.ts` を参照。
 
+## 開発者デモ（カオス注入）
+
+New Relic でのトラブルシュート練習用に、**動画の説明文（description）に英単語キーワードを 1 つ入れる**と、その層に意図的な障害を注入します。説明文は DB（`videos.description`）にそのまま保存され、各層が読み取って単語照合するだけ（SQL やシェルには渡さないので安全。クエリは全てプレースホルダでパラメータ化済み）。
+
+| キーワード | 層 | 挙動 | New Relic 目印 |
+|---|---|---|---|
+| `SRE` | バックエンド | トランスコードのスループットが大幅悪化（`-re` + x264 `veryslow` で実時間変換に） | `chaos.injected = sre_slow_transcode` / `transcode.realtime_factor` が ~0.1 → ~1.0+ |
+| `player` | フロント | HLS プレイヤーで再生エラー（`kanpachi.hiss` + NR Video Agent） | `reason = chaos` |
+| `frontend` | フロント | 詳細画面のレンダリングで例外 → ErrorBoundary が捕捉 | `chaos.injected = frontend_render_error` |
+| `backend` | バックエンド | 詳細取得 API `GET /api/videos/:id` が HTTP 500 を返す | `chaos.injected = backend_500` |
+
+- 判定は **ASCII トークン単位の大文字小文字無視マッチ**。日本語の通常文には反応せず、`SRE` / `sre` どちらも有効。
+- 基本は 1 キーワードのみ想定。複数入れた場合は `SRE → player → frontend → backend` の優先順位で 1 つに収束（決定的）。
+- 判定ロジックは backend `internal/chaos/directive.go` と frontend `src/lib/chaos.ts` のミラー実装（同一テストケースで担保）。
+
 ## 開発
 
 ```bash

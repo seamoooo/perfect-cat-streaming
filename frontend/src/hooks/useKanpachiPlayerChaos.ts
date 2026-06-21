@@ -17,6 +17,11 @@ interface Args {
   hls: Hls | null;
   /** changes per clip / reload so the dice are re-rolled */
   videoKey: string;
+  /**
+   * When true the error always fires (developer demo: a "player" keyword in the
+   * description), bypassing the random PLAYER_CHAOS_ERROR_RATE roll.
+   */
+  force?: boolean;
 }
 
 /**
@@ -28,16 +33,25 @@ interface Args {
  *
  * Returns `errored` (so the player can show an overlay) and `reset()`.
  */
-export function useKanpachiPlayerChaos({ videoEl, hls, videoKey }: Args) {
+export function useKanpachiPlayerChaos({
+  videoEl,
+  hls,
+  videoKey,
+  force = false,
+}: Args) {
   const [errored, setErrored] = useState(false);
   const armedRef = useRef(false);
 
   useEffect(() => {
     setErrored(false);
     armedRef.current = false;
-    if (!videoEl || PLAYER_CHAOS_ERROR_RATE <= 0) return;
-    // Roll once per playback; most plays are spared.
-    if (Math.random() >= PLAYER_CHAOS_ERROR_RATE) return;
+    if (!videoEl) return;
+    // `force` (description keyword) always fires; otherwise roll the dice and
+    // spare most plays. Rate 0 disables the random path entirely.
+    if (!force) {
+      if (PLAYER_CHAOS_ERROR_RATE <= 0) return;
+      if (Math.random() >= PLAYER_CHAOS_ERROR_RATE) return;
+    }
 
     let timer: number | undefined;
 
@@ -77,7 +91,7 @@ export function useKanpachiPlayerChaos({ videoEl, hls, videoKey }: Args) {
       videoEl.removeEventListener("playing", onPlaying);
       if (timer) window.clearTimeout(timer);
     };
-  }, [videoEl, hls, videoKey]);
+  }, [videoEl, hls, videoKey, force]);
 
   return { errored, reset: () => setErrored(false) };
 }

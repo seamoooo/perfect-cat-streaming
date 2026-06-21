@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
+	"github.com/seamoooo/perfect-cat-streaming/backend/internal/chaos"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/config"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/domain"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/publisher"
@@ -42,10 +43,22 @@ func (h *Videos) Get(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	if txn := newrelic.FromContext(r.Context()); txn != nil {
+	txn := newrelic.FromContext(r.Context())
+	if txn != nil {
 		txn.AddAttribute("video.id", v.ID)
 		txn.AddAttribute("cat.breed", string(v.Breed))
 		txn.AddAttribute("video.status", string(v.Status))
+	}
+	// Developer demo: a "backend" keyword in the description makes this API
+	// return HTTP 500, so operators can practise debugging a server fault in
+	// New Relic APM. See chaos.Directive for the keyword contract.
+	if chaos.Directive(v.Description) == chaos.ModeBackend {
+		if txn != nil {
+			txn.AddAttribute("chaos.injected", "backend_500")
+			txn.NoticeError(fmt.Errorf("chaos: simulated backend 500 for video %s", v.ID))
+		}
+		http.Error(w, "chaos: simulated backend error", http.StatusInternalServerError)
+		return
 	}
 	writeJSON(w, http.StatusOK, withPlaylistURL(v, h.Cfg.PublicBaseURL))
 }

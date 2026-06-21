@@ -2,11 +2,20 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { deleteVideo, getVideo } from "../lib/api";
 import { Layout } from "../components/Layout";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import { KanpachiPlayer } from "../components/player/KanpachiPlayer";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { breedLabel } from "../lib/breeds";
+import { chaosDirective } from "../lib/chaos";
 import type { Video } from "../types/video";
 import type { KanpachiSink } from "../lib/telemetry";
+
+// Developer "frontend" chaos demo: throwing during render lets the surrounding
+// ErrorBoundary capture it and surface the JS error in New Relic Browser,
+// exactly like a real client-side crash. Placed inside the boundary subtree.
+function FrontendChaosTripwire(): never {
+  throw new Error("chaos: simulated frontend render error");
+}
 
 interface Props {
   sink: KanpachiSink;
@@ -49,6 +58,7 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
     }
   };
 
+  const chaosMode = chaosDirective(video?.description);
   const isReady = video?.status === "ready" && !!video.playlistUrl;
   const posterUrl =
     isReady && video?.playlistUrl
@@ -73,75 +83,79 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
       {!video && !error && <p className="muted">読み込み中…</p>}
 
       {video && (
-        <article className="detail">
-          {isReady ? (
-            <KanpachiPlayer
-              src={video.playlistUrl!}
-              autoPlay
-              videoMeta={{
-                videoId: video.id,
-                catName: video.catName,
-                breed: video.breed,
-                title: video.title,
-                tags: video.tags,
-              }}
-              sink={sink}
-              sessionId={sessionId}
-            />
-          ) : (
-            <div className="detail-pending">
-              <div style={{ fontSize: 44, marginBottom: 8 }}>
-                {video.status === "error" ? "🙀" : "⏳"}
-              </div>
-              <p style={{ margin: 0, fontWeight: 700 }}>
-                {video.status === "error"
-                  ? "変換に失敗しました"
-                  : "変換中… もう少しお待ちください"}
-              </p>
-              {video.errorMsg && (
-                <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
-                  {video.errorMsg}
+        <ErrorBoundary>
+          <article className="detail">
+            {chaosMode === "frontend" && <FrontendChaosTripwire />}
+            {isReady ? (
+              <KanpachiPlayer
+                src={video.playlistUrl!}
+                autoPlay
+                videoMeta={{
+                  videoId: video.id,
+                  catName: video.catName,
+                  breed: video.breed,
+                  title: video.title,
+                  tags: video.tags,
+                }}
+                sink={sink}
+                sessionId={sessionId}
+                forcePlayerError={chaosMode === "player"}
+              />
+            ) : (
+              <div className="detail-pending">
+                <div style={{ fontSize: 44, marginBottom: 8 }}>
+                  {video.status === "error" ? "🙀" : "⏳"}
+                </div>
+                <p style={{ margin: 0, fontWeight: 700 }}>
+                  {video.status === "error"
+                    ? "変換に失敗しました"
+                    : "変換中… もう少しお待ちください"}
                 </p>
-              )}
-            </div>
-          )}
-
-          <div className="detail-info">
-            <div className="detail-meta-row">
-              <span className="breed-chip">{breedLabel(video.breed)}</span>
-              <span className="detail-catname">🐾 {video.catName}</span>
-              {video.durationSec > 0 && (
-                <span className="muted">
-                  {formatDuration(video.durationSec)}
-                </span>
-              )}
-            </div>
-            <h1 className="detail-title">{video.title}</h1>
-            {video.description && (
-              <p className="detail-desc">{video.description}</p>
-            )}
-            {video.tags?.length ? (
-              <div className="hashtags" style={{ marginTop: 12 }}>
-                {video.tags.map((t) => (
-                  <span key={t} className="hashtag">
-                    #{t}
-                  </span>
-                ))}
+                {video.errorMsg && (
+                  <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+                    {video.errorMsg}
+                  </p>
+                )}
               </div>
-            ) : null}
-          </div>
+            )}
 
-          <div className="detail-actions">
-            <button
-              type="button"
-              className="btn btn-danger"
-              onClick={onDeleteClick}
-              disabled={deleting}
-            >
-              🗑 {deleting ? "削除中…" : "この動画を削除"}
-            </button>
-          </div>
-        </article>
+            <div className="detail-info">
+              <div className="detail-meta-row">
+                <span className="breed-chip">{breedLabel(video.breed)}</span>
+                <span className="detail-catname">🐾 {video.catName}</span>
+                {video.durationSec > 0 && (
+                  <span className="muted">
+                    {formatDuration(video.durationSec)}
+                  </span>
+                )}
+              </div>
+              <h1 className="detail-title">{video.title}</h1>
+              {video.description && (
+                <p className="detail-desc">{video.description}</p>
+              )}
+              {video.tags?.length ? (
+                <div className="hashtags" style={{ marginTop: 12 }}>
+                  {video.tags.map((t) => (
+                    <span key={t} className="hashtag">
+                      #{t}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="detail-actions">
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={onDeleteClick}
+                disabled={deleting}
+              >
+                🗑 {deleting ? "削除中…" : "この動画を削除"}
+              </button>
+            </div>
+          </article>
+        </ErrorBoundary>
       )}
     </Layout>
   );

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/newrelic/go-agent/v3/newrelic"
 
+	"github.com/seamoooo/perfect-cat-streaming/backend/internal/chaos"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/config"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/domain"
 	"github.com/seamoooo/perfect-cat-streaming/backend/internal/repository"
@@ -96,6 +97,9 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		CatName:       v.CatName,
 		Breed:         string(v.Breed),
 		ThumbnailPath: thumbPath,
+		// Developer demo: an "SRE" keyword in the description degrades transcode
+		// throughput so the slowdown is observable in New Relic APM.
+		ChaosSlow: chaos.Directive(v.Description) == chaos.ModeSRE,
 	})
 
 	// Domain custom attributes on the upload web transaction.
