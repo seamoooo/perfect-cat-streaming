@@ -87,6 +87,27 @@ func (f *FFmpeg) Thumbnail(ctx context.Context, srcMP4, outPath string) error {
 	return nil
 }
 
+// PosterFromImage normalizes a user-supplied image (jpg/png/webp) into the
+// poster.jpg used by the gallery — scaled to a consistent width and re-encoded
+// as JPEG. Used when the uploader picks a custom thumbnail.
+func (f *FFmpeg) PosterFromImage(ctx context.Context, srcImage, outPath string) error {
+	defer segment(ctx, "ffmpeg.poster_image")()
+	args := []string{
+		"-y",
+		"-i", srcImage,
+		"-vf", "scale=640:-2",
+		"-frames:v", "1",
+		outPath,
+	}
+	cmd := exec.CommandContext(ctx, f.Bin, args...)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ffmpeg poster-from-image failed: %w: %s", err, stderr.String())
+	}
+	return nil
+}
+
 // Probe returns duration in seconds via ffprobe (bundled with ffmpeg).
 func (f *FFmpeg) Probe(ctx context.Context, srcMP4 string) (float64, error) {
 	defer segment(ctx, "ffprobe.duration")()

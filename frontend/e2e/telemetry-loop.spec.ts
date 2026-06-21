@@ -47,8 +47,9 @@ async function uploadInUI(
 ): Promise<string> {
   await page.goto("/upload");
 
-  // Upload form (dedicated upload page)
-  await page.setInputFiles('input[type="file"]', FIXTURE);
+  // Upload form (dedicated upload page). There are two file inputs now (video
+  // + optional thumbnail); target the video one specifically.
+  await page.setInputFiles('input[accept*="video"]', FIXTURE);
   // The title input is the only blank text input on the page initially —
   // be specific via placeholder to avoid the cat-name/tag inputs.
   await page.locator('input[placeholder*="タイトル"]').fill(opts.title);

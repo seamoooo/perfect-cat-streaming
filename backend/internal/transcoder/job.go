@@ -17,12 +17,13 @@ import (
 )
 
 type Job struct {
-	VideoID  string
-	SrcPath  string
-	OutDir   string
-	Playlist string // public URL of the resulting playlist (used when no Publisher)
-	CatName  string // domain context for New Relic custom attributes
-	Breed    string // siamese | bengal | other
+	VideoID       string
+	SrcPath       string
+	OutDir        string
+	Playlist      string // public URL of the resulting playlist (used when no Publisher)
+	CatName       string // domain context for New Relic custom attributes
+	Breed         string // cat breed slug
+	ThumbnailPath string // optional custom poster image; empty = auto from video frame
 }
 
 type Queue struct {
@@ -125,13 +126,21 @@ func (q *Queue) process(ctx context.Context, workerID int, j Job) {
 		}
 	}
 
-	// Netflix-style poster frame next to the HLS output, so it gets published
-	// to S3 / served from /media alongside index.m3u8. Non-fatal on failure.
+	// Netflix-style poster next to the HLS output, so it gets published to S3 /
+	// served from /media alongside index.m3u8. Use the uploader's custom
+	// thumbnail when provided, else extract a representative video frame.
+	// Non-fatal on failure.
 	posterPath := filepath.Join(j.OutDir, "poster.jpg")
-	if err := q.tx.Thumbnail(jobCtx, j.SrcPath, posterPath); err != nil {
-		log.Printf("[transcoder] thumbnail failed (non-fatal) videoID=%s: %v", j.VideoID, err)
+	var posterErr error
+	if j.ThumbnailPath != "" {
+		posterErr = q.tx.PosterFromImage(jobCtx, j.ThumbnailPath, posterPath)
+	} else {
+		posterErr = q.tx.Thumbnail(jobCtx, j.SrcPath, posterPath)
+	}
+	if posterErr != nil {
+		log.Printf("[transcoder] poster failed (non-fatal) videoID=%s: %v", j.VideoID, posterErr)
 		if txn != nil {
-			txn.NoticeError(err)
+			txn.NoticeError(posterErr)
 		}
 	}
 

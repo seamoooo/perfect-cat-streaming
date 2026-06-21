@@ -57,12 +57,26 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 	out.Close()
 
+	// Optional custom thumbnail image. When present it becomes the gallery
+	// poster instead of an auto-extracted video frame.
+	thumbPath := ""
+	if tf, tfh, terr := r.FormFile("thumbnail"); terr == nil {
+		defer tf.Close()
+		tdst := h.Stg.UploadPath(id, "thumb_"+tfh.Filename)
+		if tout, err := os.Create(tdst); err == nil {
+			if _, err := io.Copy(tout, tf); err == nil {
+				thumbPath = tdst
+			}
+			tout.Close()
+		}
+	}
+
 	now := time.Now().UTC()
 	v := domain.Video{
 		ID:          id,
 		Title:       formOr(r, "title", strings.TrimSuffix(fh.Filename, ".mp4")),
 		Description: r.FormValue("description"),
-		CatName:     formOr(r, "catName", "Bincho"),
+		CatName:     formOr(r, "catName", "ねこ"),
 		Breed:       parseBreed(r.FormValue("breed")),
 		Tags:        splitCSV(r.FormValue("tags")),
 		Status:      domain.StatusPending,
@@ -75,12 +89,13 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.Queue.Enqueue(transcoder.Job{
-		VideoID:  id,
-		SrcPath:  dst,
-		OutDir:   h.Stg.HLSDir(id),
-		Playlist: fmt.Sprintf("%s/media/%s/index.m3u8", strings.TrimRight(h.Cfg.PublicBaseURL, "/"), id),
-		CatName:  v.CatName,
-		Breed:    string(v.Breed),
+		VideoID:       id,
+		SrcPath:       dst,
+		OutDir:        h.Stg.HLSDir(id),
+		Playlist:      fmt.Sprintf("%s/media/%s/index.m3u8", strings.TrimRight(h.Cfg.PublicBaseURL, "/"), id),
+		CatName:       v.CatName,
+		Breed:         string(v.Breed),
+		ThumbnailPath: thumbPath,
 	})
 
 	// Domain custom attributes on the upload web transaction.
@@ -107,17 +122,14 @@ func formOr(r *http.Request, key, def string) string {
 	return def
 }
 
+// parseBreed accepts any cat-breed slug from the frontend list (e.g. "siamese",
+// "scottish_fold", "maine_coon"). Empty falls back to "other".
 func parseBreed(s string) domain.Breed {
-	switch strings.ToLower(strings.TrimSpace(s)) {
-	case "siamese", "bincho":
-		return domain.BreedSiamese
-	case "bengal", "kanpachi":
-		return domain.BreedBengal
-	case "":
-		return domain.BreedOther
-	default:
+	s = strings.ToLower(strings.TrimSpace(s))
+	if s == "" {
 		return domain.BreedOther
 	}
+	return domain.Breed(s)
 }
 
 func splitCSV(s string) []string {

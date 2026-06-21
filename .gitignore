@@ -42,3 +42,7 @@ infra/terraform/lambda/*.zip
 .vscode/
 .idea/
 *.swp
+
+# saved plan files
+infra/terraform/tfplan*
+infra/terraform/tfwaf

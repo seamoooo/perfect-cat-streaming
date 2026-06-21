@@ -62,6 +62,7 @@ jobs:
           VITE_NEW_RELIC_ACCOUNT_ID: ${{ vars.VITE_NEW_RELIC_ACCOUNT_ID }}
           VITE_NEW_RELIC_TRUST_KEY: ${{ vars.VITE_NEW_RELIC_TRUST_KEY }}
           VITE_NEW_RELIC_AGENT_ID: ${{ vars.VITE_NEW_RELIC_AGENT_ID }}
+          VITE_NEW_RELIC_VIDEO_APP_ID: ${{ vars.VITE_NEW_RELIC_VIDEO_APP_ID }}
           VITE_PLAYER_CHAOS_ERROR_RATE: ${{ vars.VITE_PLAYER_CHAOS_ERROR_RATE }}
 
       - name: New Relic Change Tracking

@@ -96,7 +96,7 @@ variable "db_allocated_storage" {
 variable "db_engine_version" {
   description = "MySQL engine version on RDS."
   type        = string
-  default     = "8.0.39"
+  default     = "8.0.46"
 }
 
 variable "db_name" {

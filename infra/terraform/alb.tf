@@ -45,18 +45,33 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 # --- HTTP listener ---
+# When HTTPS is enabled, port 80 just 301-redirects everything to HTTPS so the
+# browser always lands on the secure origin. Without a domain it serves the app
+# over HTTP (forward to frontend, with the /api/* rule below).
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend.arn
+    type             = local.use_https ? "redirect" : "forward"
+    target_group_arn = local.use_https ? null : aws_lb_target_group.frontend.arn
+
+    dynamic "redirect" {
+      for_each = local.use_https ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
   }
 }
 
+# HTTP /api/* forward — only needed in HTTP-only mode; under HTTPS the redirect
+# above sends /api/* to 443 where https_backend_paths handles it.
 resource "aws_lb_listener_rule" "backend_paths" {
+  count        = local.use_https ? 0 : 1
   listener_arn = aws_lb_listener.http.arn
   priority     = 100
 

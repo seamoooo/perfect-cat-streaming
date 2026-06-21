@@ -13,7 +13,7 @@ resource "aws_db_subnet_group" "main" {
 
 resource "aws_security_group" "rds" {
   name        = "${local.name_prefix}-rds"
-  description = "RDS MySQL — accept only from ECS tasks"
+  description = "RDS MySQL - accept only from ECS tasks"
   vpc_id      = aws_vpc.main.id
 
   ingress {
