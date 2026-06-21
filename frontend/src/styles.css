@@ -607,6 +607,28 @@ h3 {
   display: grid;
   gap: 12px;
 }
+/* Heads-up that transcoding takes a while (esp. big phone videos) */
+.upload-note {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--fg-muted);
+  background: rgba(255, 210, 122, 0.1);
+  border: 1px solid rgba(255, 210, 122, 0.28);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.upload-note strong {
+  color: #ffd27a;
+  font-weight: 700;
+}
+.upload-note .upload-note-icon {
+  font-size: 16px;
+  line-height: 1.3;
+  flex: none;
+}
 .upload-form input,
 .upload-form select,
 .upload-form textarea {

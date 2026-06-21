@@ -65,6 +65,19 @@ export function UploadPage() {
 
       <section className="card" style={{ maxWidth: 560 }}>
         <form onSubmit={onSubmit} className="upload-form">
+          <div className="upload-note">
+            <span className="upload-note-icon" aria-hidden>
+              ⏳
+            </span>
+            <span>
+              アップロード後、動画は <strong>HLS形式に変換</strong>{" "}
+              されます。スマホの高画質・長尺動画は変換に{" "}
+              <strong>数十秒〜数分</strong>{" "}
+              かかることがあります。変換中は一覧に「変換中…」と表示され、完了すると
+              <strong>自動で</strong>再生できるようになります（リロード不要）。
+            </span>
+          </div>
+
           <label className="field-label">動画ファイル</label>
           <input
             type="file"
