@@ -37,7 +37,12 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "S3_REGION", value = var.region },
       { name = "MEDIA_BASE_URL", value = length(local.cloudfront_alias) > 0 ? "https://${local.cloudfront_alias[0]}" : "https://${aws_cloudfront_distribution.media.domain_name}" },
       { name = "NEW_RELIC_APP_NAME", value = var.new_relic_app_name },
-      { name = "APP_ENV", value = var.environment },
+      # APP_ENV only drives the New Relic app-name suffix in the Go agent
+      # (observability/newrelic.go: a " (env)" suffix is added unless env=="prod").
+      # Use "prod" here so the entity stays plain "PerfectCatStreaming" — which is
+      # also what the alert NRQL filters on. Resource naming still uses
+      # var.environment (=dev) via local.name_prefix, unaffected.
+      { name = "APP_ENV", value = "prod" },
       { name = "NEW_RELIC_AI_MONITORING_ENABLED", value = tostring(var.new_relic_ai_monitoring_enabled) },
       { name = "NEW_RELIC_CUSTOM_INSIGHTS_EVENTS_MAX_SAMPLES_STORED", value = tostring(var.new_relic_custom_events_max_samples) },
       { name = "NEW_RELIC_AI_MONITORING_STREAMING_ENABLED", value = tostring(var.new_relic_ai_monitoring_streaming_enabled) },
