@@ -18,6 +18,7 @@ export function UploadPage() {
   useDocumentTitle("動画をアップロード");
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -34,21 +35,24 @@ export function UploadPage() {
     e.preventDefault();
     if (!file) return;
     setUploading(true);
+    setProgress(0);
     try {
-      await uploadVideo({
-        file,
-        thumbnail,
-        title: form.title || file.name,
-        description: form.description,
-        catName: form.catName || "ねこ",
-        breed: form.breed,
-        tags: parseHashtags(form.tags),
-      });
+      await uploadVideo(
+        {
+          file,
+          thumbnail,
+          title: form.title || file.name,
+          description: form.description,
+          catName: form.catName || "ねこ",
+          breed: form.breed,
+          tags: parseHashtags(form.tags),
+        },
+        (f) => setProgress(f),
+      );
       // After upload, jump to the list so the user can watch it go ready.
       navigate("/videos");
     } catch (err) {
       alert(`アップロード失敗: ${err instanceof Error ? err.message : err}`);
-    } finally {
       setUploading(false);
     }
   };
@@ -150,13 +154,36 @@ export function UploadPage() {
               ))}
             </div>
           )}
+          {uploading && (
+            <div
+              className="upload-progress"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress * 100)}
+            >
+              <div
+                className="upload-progress-bar"
+                style={{ width: `${Math.max(2, Math.round(progress * 100))}%` }}
+              />
+            </div>
+          )}
           <button
             type="submit"
             className="btn btn-primary"
             disabled={!file || uploading}
           >
-            {uploading ? "アップロード中…" : "⬆ アップロード"}
+            {!uploading
+              ? "⬆ アップロード"
+              : progress >= 1
+                ? "サーバー処理中…"
+                : `アップロード中… ${Math.round(progress * 100)}%`}
           </button>
+          {uploading && (
+            <p className="muted" style={{ margin: "-4px 0 0", fontSize: 12 }}>
+              アップロード中はこの画面を閉じないでください。完了すると一覧へ移動します。
+            </p>
+          )}
         </form>
       </section>
     </Layout>

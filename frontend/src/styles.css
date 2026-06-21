@@ -628,6 +628,21 @@ h3 {
   display: grid;
   gap: 12px;
 }
+/* Upload progress bar (real % from XHR upload events) */
+.upload-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+.upload-progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #00ac69, #4fd1a5);
+  transition: width 180ms ease;
+}
+
 /* Heads-up that transcoding takes a while (esp. big phone videos) */
 .upload-note {
   display: flex;
