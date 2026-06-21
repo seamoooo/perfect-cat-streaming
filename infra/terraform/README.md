@@ -294,6 +294,19 @@ terraform apply
 
 > Browser/Video の条件はアカウントスコープのNRQL。同一NRアカウントに複数のbrowser/videoアプリがある場合は `AND appName = '...'` を足して絞ってください。Video の event type が環境で異なる場合は `CONTENT_ERROR` のクエリを調整。
 
+**死活監視（Synthetics ping）:**
+
+`newrelic_synthetics.tf` が **SIMPLE（ping）モニタ**を2本（東京 `AP_NORTHEAST_1` から5分間隔）と、失敗時の稼働アラートを作ります。
+
+| モニタ | URL | チェック |
+|---|---|---|
+| frontend ping | `${公開URL}/`（`https://<domain>` or `http://<alb-dns>`）| HEAD / 2xx |
+| healthz ping | `${公開URL}/healthz` | GET（`bypass_head_request`）+ 本文 `ok` を検証 |
+
+- 公開URLは `domain_name` 設定時は HTTPS、未設定なら ALB DNS の HTTP。`verify_ssl` は HTTPS 時のみ有効。
+- 稼働アラート（`Uptime - synthetics ping failing`）は `FROM SyntheticCheck WHERE result='FAILED'` を共有ポリシーに載せるので、Email ワークフローでそのまま通知されます。
+- 有効化条件はアラートと同じ（`new_relic_user_api_key` 必須・未設定なら `count = 0`）。ロケーションを増やすなら `locations_public` に `US_EAST_1` 等を追加。
+
 ## 既知の制約
 
 - バックエンドは1レプリカ前提でも動きますが、RDS MySQL移行後は複数レプリカでも安全（メタデータが共有DBになったので）。スケールしたければ `backend_desired_count` を増やすだけ。
