@@ -78,14 +78,12 @@ resource "aws_db_instance" "main" {
 
   # --- New Relic RDS instrumentation (CloudWatch path) ---
   # AWS/RDS standard metrics already flow via the CloudWatch Metric Stream
-  # (newrelic_aws_integration.tf). These two add depth that NR can surface:
-  #   - Performance Insights: query-level DB load (top SQL, wait events).
-  #   - Enhanced Monitoring : OS-level metrics at 60s granularity.
-  # PI 7-day retention is free; db.t4g.micro supports both.
-  performance_insights_enabled          = true
-  performance_insights_retention_period = 7
-  monitoring_interval                   = 60
-  monitoring_role_arn                   = aws_iam_role.rds_monitoring.arn
+  # (newrelic_aws_integration.tf). Enhanced Monitoring adds OS-level metrics at
+  # 60s granularity. Performance Insights is intentionally NOT enabled: it is
+  # unsupported on burstable micro/small classes (db.t4g.micro), so AWS rejects
+  # the ModifyDBInstance call. Bump to db.t3.medium+ to turn PI on.
+  monitoring_interval = 60
+  monitoring_role_arn = aws_iam_role.rds_monitoring.arn
 
   tags = { Name = "${local.name_prefix}-mysql" }
 }
