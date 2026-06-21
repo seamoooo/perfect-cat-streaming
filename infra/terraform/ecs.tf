@@ -61,13 +61,11 @@ resource "aws_ecs_task_definition" "backend" {
         "awslogs-stream-prefix" = "backend"
       }
     }
-    healthCheck = {
-      command     = ["CMD-SHELL", "wget -q -O- http://localhost:8080/healthz || exit 1"]
-      interval    = 30
-      timeout     = 5
-      retries     = 3
-      startPeriod = 30
-    }
+    # No container-level healthCheck: the ALB target group already health-checks
+    # /healthz over HTTP (alb.tf), which is what actually gates traffic. A
+    # container HEALTHCHECK using `wget` repeatedly broke deploys because the
+    # slim runtime image lacked wget; relying on the ALB removes that failure
+    # mode. (wget is still installed in the image as defense-in-depth.)
   }])
 }
 
