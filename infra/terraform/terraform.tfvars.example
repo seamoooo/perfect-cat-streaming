@@ -41,3 +41,10 @@ frontend_desired_count = 1
 # new_relic_user_api_key = "NRAK-xxxxxxxxxxxxxx" # required to manage alerts
 # new_relic_region       = "US"                  # or "EU"
 # new_relic_alert_email  = "you@example.com"      # empty = no email workflow
+
+# CloudFront bandwidth cost guard (alarm + optional auto-disable circuit breaker).
+# On by default; tune or disable here. Email falls back to new_relic_alert_email.
+# cloudfront_cost_guard_enabled      = true
+# cloudfront_bytes_alarm_gb_per_hour = 5
+# cloudfront_auto_disable            = true   # false = alert only, no kill switch
+# cost_alert_email                   = "you@example.com"

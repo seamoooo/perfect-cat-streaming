@@ -166,6 +166,31 @@ variable "new_relic_alert_email" {
   default     = ""
 }
 
+# --- CloudFront bandwidth cost guard ---
+variable "cloudfront_cost_guard_enabled" {
+  description = "Create the CloudFront BytesDownloaded alarm + SNS topic (runaway egress detection)."
+  type        = bool
+  default     = true
+}
+
+variable "cloudfront_auto_disable" {
+  description = "Also deploy a Lambda that disables the CloudFront distribution when the bandwidth alarm fires (hard circuit breaker — stops video delivery until re-enabled manually)."
+  type        = bool
+  default     = true
+}
+
+variable "cloudfront_bytes_alarm_gb_per_hour" {
+  description = "Alarm when CloudFront BytesDownloaded sum over 1 hour exceeds this many GB."
+  type        = number
+  default     = 5
+}
+
+variable "cost_alert_email" {
+  description = "Email for AWS cost alarms (SNS). Empty = falls back to new_relic_alert_email."
+  type        = string
+  default     = ""
+}
+
 # Optional HTTPS — set both to enable TLS on the ALB and CloudFront alias.
 variable "domain_name" {
   description = "Custom domain (e.g. cats.example.com). Empty = HTTP-only ALB and *.cloudfront.net for CDN."

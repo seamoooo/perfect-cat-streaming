@@ -85,6 +85,14 @@ resource "aws_cloudfront_distribution" "media" {
     ssl_support_method             = length(local.cloudfront_alias) > 0 ? "sni-only" : null
     minimum_protocol_version       = length(local.cloudfront_alias) > 0 ? "TLSv1.2_2021" : "TLSv1"
   }
+
+  # The cost-guard circuit breaker (cloudfront_cost_guard.tf) may flip `enabled`
+  # to false out-of-band. Ignore it so a later `terraform apply` doesn't silently
+  # re-enable the distribution while a bandwidth incident is still being handled.
+  # Re-enable deliberately (console/CLI) once you've dealt with the spike.
+  lifecycle {
+    ignore_changes = [enabled]
+  }
 }
 
 data "aws_cloudfront_cache_policy" "caching_optimized" {

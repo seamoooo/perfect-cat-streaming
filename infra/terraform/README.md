@@ -307,6 +307,30 @@ terraform apply
 - 稼働アラート（`Uptime - synthetics ping failing`）は `FROM SyntheticCheck WHERE result='FAILED'` を共有ポリシーに載せるので、Email ワークフローでそのまま通知されます。
 - 有効化条件はアラートと同じ（`new_relic_user_api_key` 必須・未設定なら `count = 0`）。ロケーションを増やすなら `locations_public` に `US_EAST_1` 等を追加。
 
+## コスト対策（CloudFront 帯域の暴走防止）
+
+スパイク時に唯一“従量で青天井に増える”のが **CloudFront の視聴帯域（egress）** です（ECS/RDS はオートスケール無しなので compute は固定）。AWS にネイティブな配信上限は無いため、`cloudfront_cost_guard.tf` で **検知 + 自動遮断（擬似上限）** を構築します。CloudFront のメトリクスは us-east-1 にしか出ないので、アラーム/SNS/Lambda は `aws.us_east_1` プロバイダで作成します。
+
+```
+CloudWatch alarm (BytesDownloaded > N GB/時) ──▶ SNS ──┬─▶ Email（検知通知）
+                                                        └─▶ Lambda（distribution を enabled=false に＝止血）
+```
+
+| 変数 | 既定 | 用途 |
+|---|---|---|
+| `cloudfront_cost_guard_enabled` | `true` | アラーム + SNS を作る |
+| `cloudfront_bytes_alarm_gb_per_hour` | `5` | しきい値（1時間あたりGB。東京 egress 約 $0.114/GB） |
+| `cloudfront_auto_disable` | `true` | 発火時に Lambda が distribution を無効化（動画配信が止まる） |
+| `cost_alert_email` | `""` | 通知先。空なら `new_relic_alert_email` を流用 |
+
+- Lambda は SNS の **ALARM 通知だけ**で発火（OK は無視）。多重発火しても既に無効なら何もしません。
+- 一度遮断したら **再有効化は手動**（マネコン/CLI）。`aws_cloudfront_distribution.media` は `lifecycle { ignore_changes = [enabled] }` を付けてあるので、インシデント対応中に `terraform apply` しても勝手に再有効化されません。
+- SNS の Email サブスクリプションは **確認メールの承認が必要**（初回 apply 後に届くリンクを承認するまで配信されません）。
+- 自動遮断が不要なら `cloudfront_auto_disable = false`（アラート通知のみ）。ガード全体を切るなら `cloudfront_cost_guard_enabled = false`。
+- これは NR とは独立した純 AWS の仕組みなので、`new_relic_user_api_key` 無しでも動きます。
+
+> 月次の遅効性の保険として AWS Budgets を併用するのも有効（半日〜1日遅れ）。リアルタイム寄りの一次防衛は上記の CloudWatch アラーム＋Lambda です。
+
 ## 既知の制約
 
 - バックエンドは1レプリカ前提でも動きますが、RDS MySQL移行後は複数レプリカでも安全（メタデータが共有DBになったので）。スケールしたければ `backend_desired_count` を増やすだけ。
