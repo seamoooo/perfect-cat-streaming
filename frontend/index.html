@@ -17,6 +17,15 @@
     <meta name="theme-color" content="#00ac69" />
     <link rel="canonical" href="https://perfectcatstreaming.com/" />
 
+    <!-- Resource hints: warm up the media CDN (poster + HLS) connection early
+         so the first frame loads faster. -->
+    <link
+      rel="preconnect"
+      href="https://media.perfectcatstreaming.com"
+      crossorigin
+    />
+    <link rel="dns-prefetch" href="https://media.perfectcatstreaming.com" />
+
     <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/og-image.jpg" />
@@ -37,6 +46,7 @@
       property="og:image"
       content="https://perfectcatstreaming.com/og-image.jpg"
     />
+    <meta property="og:image:alt" content="ねこチャン" />
     <meta property="og:locale" content="ja_JP" />
 
     <!-- Twitter Card -->

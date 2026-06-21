@@ -67,7 +67,11 @@ fi
 echo "[change-tracking] entity '${NEW_RELIC_APP_NAME}' -> ${guid}"
 
 # --- 2) create the deployment marker ---
-mutation="mutation { changeTrackingCreateDeployment(deployment: { entityGuid: \"${guid}\", version: \"${VERSION}\", description: \"${DESCRIPTION}\", commit: \"${COMMIT_SHA}\", user: \"${DEPLOY_USER}\", deploymentType: BASIC }) { deploymentId entityGuid } }"
+# GraphQL string literals can't span newlines; a multi-line commit message
+# breaks the inline mutation. Use only the commit subject (first line) and strip
+# quotes/backslashes so the value stays a valid single-line GraphQL string.
+desc="$(printf '%s' "$DESCRIPTION" | head -n1 | tr -d '"\\')"
+mutation="mutation { changeTrackingCreateDeployment(deployment: { entityGuid: \"${guid}\", version: \"${VERSION}\", description: \"${desc}\", commit: \"${COMMIT_SHA}\", user: \"${DEPLOY_USER}\", deploymentType: BASIC }) { deploymentId entityGuid } }"
 deploy_resp="$(nerdgraph "$mutation")"
 
 if echo "$deploy_resp" | jq -e '.errors' >/dev/null 2>&1; then
