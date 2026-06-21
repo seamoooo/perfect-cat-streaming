@@ -1,4 +1,6 @@
-export type Breed = "siamese" | "bengal" | "other";
+// Breed slug from the CAT_BREEDS list (lib/breeds.ts). Open string since the
+// list can grow without touching this type.
+export type Breed = string;
 
 export type VideoStatus = "pending" | "processing" | "ready" | "error";
 

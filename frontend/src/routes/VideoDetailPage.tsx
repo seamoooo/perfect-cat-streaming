@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { deleteVideo, getVideo } from "../lib/api";
 import { Layout } from "../components/Layout";
 import { KanpachiPlayer } from "../components/player/KanpachiPlayer";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { breedLabel } from "../lib/breeds";
 import type { Video } from "../types/video";
 import type { KanpachiSink } from "../lib/telemetry";
 
@@ -17,6 +19,7 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
   const [video, setVideo] = useState<Video | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  useDocumentTitle(video?.title);
 
   useEffect(() => {
     let active = true;
@@ -46,26 +49,34 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
     }
   };
 
+  const isReady = video?.status === "ready" && !!video.playlistUrl;
+  const posterUrl =
+    isReady && video?.playlistUrl
+      ? video.playlistUrl.replace(/index\.m3u8.*$/, "poster.jpg")
+      : null;
+
   return (
     <Layout>
+      {posterUrl && (
+        <div
+          className="detail-backdrop"
+          style={{ backgroundImage: `url(${posterUrl})` }}
+        />
+      )}
+
       <p>
-        <Link to="/videos">← 一覧へ戻る</Link>
+        <Link to="/videos" className="back-link">
+          ← 一覧へ戻る
+        </Link>
       </p>
       {error && <p className="error-text">エラー: {error}</p>}
-      {!video && !error && <p>読み込み中…</p>}
-      {video && (
-        <>
-          <header style={{ marginBottom: 16 }}>
-            <h1 style={{ margin: 0 }}>{video.title}</h1>
-            <p style={{ marginTop: 4, opacity: 0.8 }}>
-              {video.catName} ({video.breed})
-              {video.description ? ` — ${video.description}` : ""}
-            </p>
-          </header>
+      {!video && !error && <p className="muted">読み込み中…</p>}
 
-          {video.status === "ready" && video.playlistUrl ? (
+      {video && (
+        <article className="detail">
+          {isReady ? (
             <KanpachiPlayer
-              src={video.playlistUrl}
+              src={video.playlistUrl!}
               autoPlay
               videoMeta={{
                 videoId: video.id,
@@ -78,42 +89,66 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
               sessionId={sessionId}
             />
           ) : (
-            <p>
-              ステータス: <strong>{video.status}</strong>
-              {video.errorMsg ? ` — ${video.errorMsg}` : ""}
-            </p>
+            <div className="detail-pending">
+              <div style={{ fontSize: 44, marginBottom: 8 }}>
+                {video.status === "error" ? "🙀" : "⏳"}
+              </div>
+              <p style={{ margin: 0, fontWeight: 700 }}>
+                {video.status === "error"
+                  ? "変換に失敗しました"
+                  : "変換中… もう少しお待ちください"}
+              </p>
+              {video.errorMsg && (
+                <p className="muted" style={{ marginTop: 6, fontSize: 13 }}>
+                  {video.errorMsg}
+                </p>
+              )}
+            </div>
           )}
 
-          <div
-            style={{
-              marginTop: 32,
-              paddingTop: 16,
-              borderTop: "1px solid var(--card-border)",
-              display: "flex",
-              gap: 12,
-              alignItems: "center",
-              justifyContent: "flex-end",
-            }}
-          >
+          <div className="detail-info">
+            <div className="detail-meta-row">
+              <span className="breed-chip">{breedLabel(video.breed)}</span>
+              <span className="detail-catname">🐾 {video.catName}</span>
+              {video.durationSec > 0 && (
+                <span className="muted">
+                  {formatDuration(video.durationSec)}
+                </span>
+              )}
+            </div>
+            <h1 className="detail-title">{video.title}</h1>
+            {video.description && (
+              <p className="detail-desc">{video.description}</p>
+            )}
+            {video.tags?.length ? (
+              <div className="hashtags" style={{ marginTop: 12 }}>
+                {video.tags.map((t) => (
+                  <span key={t} className="hashtag">
+                    #{t}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="detail-actions">
             <button
               type="button"
+              className="btn btn-danger"
               onClick={onDeleteClick}
               disabled={deleting}
-              style={{
-                background: deleting ? "#777" : "#c03838",
-                color: "#fff",
-                border: "none",
-                padding: "8px 16px",
-                borderRadius: 6,
-                fontWeight: 600,
-                cursor: deleting ? "wait" : "pointer",
-              }}
             >
               🗑 {deleting ? "削除中…" : "この動画を削除"}
             </button>
           </div>
-        </>
+        </article>
       )}
     </Layout>
   );
+}
+
+function formatDuration(sec: number): string {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
 }

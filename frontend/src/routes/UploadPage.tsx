@@ -1,20 +1,34 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Layout } from "../components/Layout";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { uploadVideo } from "../lib/api";
+import { CAT_BREED_GROUPS } from "../lib/breeds";
+
+// "#かわいい もふもふ, ねこ部" → ["かわいい", "もふもふ", "ねこ部"]
+function parseHashtags(input: string): string[] {
+  return input
+    .split(/[\s,]+/)
+    .map((t) => t.replace(/^#+/, "").trim())
+    .filter(Boolean);
+}
 
 /** Upload page — submit a new cat clip for transcoding. */
 export function UploadPage() {
+  useDocumentTitle("動画をアップロード");
   const navigate = useNavigate();
   const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     title: "",
     description: "",
-    catName: "Bincho",
-    breed: "siamese" as "siamese" | "bengal" | "other",
+    catName: "",
+    breed: "siamese",
     tags: "",
   });
   const [file, setFile] = useState<File | null>(null);
+  const [thumbnail, setThumbnail] = useState<File | null>(null);
+
+  const thumbPreview = thumbnail ? URL.createObjectURL(thumbnail) : null;
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,14 +37,12 @@ export function UploadPage() {
     try {
       await uploadVideo({
         file,
+        thumbnail,
         title: form.title || file.name,
         description: form.description,
-        catName: form.catName,
+        catName: form.catName || "ねこ",
         breed: form.breed,
-        tags: form.tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean),
+        tags: parseHashtags(form.tags),
       });
       // After upload, jump to the list so the user can watch it go ready.
       navigate("/videos");
@@ -53,12 +65,39 @@ export function UploadPage() {
 
       <section className="card" style={{ maxWidth: 560 }}>
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+          <label className="field-label">動画ファイル</label>
           <input
             type="file"
             accept="video/mp4,video/*"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             required
           />
+
+          <label className="field-label">
+            サムネイル画像（任意・一覧に表示。未指定なら動画から自動生成）
+          </label>
+          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setThumbnail(e.target.files?.[0] ?? null)}
+              style={{ flex: 1 }}
+            />
+            {thumbPreview && (
+              <img
+                src={thumbPreview}
+                alt="サムネイルプレビュー"
+                style={{
+                  width: 96,
+                  aspectRatio: "16 / 9",
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  border: "1px solid var(--card-border)",
+                }}
+              />
+            )}
+          </div>
+
           <input
             placeholder="タイトル (空ならファイル名)"
             value={form.title}
@@ -71,27 +110,40 @@ export function UploadPage() {
           />
           <div style={{ display: "flex", gap: 8 }}>
             <input
-              placeholder="猫の名前 (例: Bincho)"
+              placeholder="猫の名前 (例: みけ)"
               value={form.catName}
               onChange={(e) => setForm({ ...form, catName: e.target.value })}
               style={{ flex: 1 }}
             />
             <select
               value={form.breed}
-              onChange={(e) =>
-                setForm({ ...form, breed: e.target.value as typeof form.breed })
-              }
+              onChange={(e) => setForm({ ...form, breed: e.target.value })}
             >
-              <option value="siamese">シャム (Bincho)</option>
-              <option value="bengal">ベンガル (Kanpachi)</option>
-              <option value="other">その他</option>
+              {CAT_BREED_GROUPS.map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.breeds.map((b) => (
+                    <option key={b.value} value={b.value}>
+                      {b.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
           <input
-            placeholder="タグ (カンマ区切り)"
+            placeholder="ハッシュタグ (スペース区切り・例: かわいい もふもふ 寝顔)"
             value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
           />
+          {form.tags.trim() && (
+            <div className="hashtags">
+              {parseHashtags(form.tags).map((t) => (
+                <span key={t} className="hashtag">
+                  #{t}
+                </span>
+              ))}
+            </div>
+          )}
           <button
             type="submit"
             className="btn btn-primary"

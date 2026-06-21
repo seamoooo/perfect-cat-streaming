@@ -2,12 +2,82 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ctext y='52' font-size='52'%3E%F0%9F%90%88%3C/text%3E%3C/svg%3E" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Perfect Cat Streaming — Bincho × Kanpachi</title>
+
+    <title>Perfect Cat Streaming — ねこチャンの動画配信 | New Relic デモ</title>
+    <meta
+      name="description"
+      content="ねこチャンの動画を再生・配信できる猫動画ストリーミングサイト。HLSでなめらかに再生し、再生品質やパフォーマンスを New Relic で計測する製品デモです。"
+    />
+    <meta
+      name="keywords"
+      content="猫,ねこ,動画,ストリーミング,HLS,New Relic,オブザーバビリティ,デモ,cat,streaming"
+    />
+    <meta name="robots" content="index, follow" />
+    <meta name="theme-color" content="#00ac69" />
+    <link rel="canonical" href="https://perfectcatstreaming.com/" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/og-image.jpg" />
+
+    <!-- Open Graph (Facebook / LINE / Slack etc.) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Perfect Cat Streaming" />
+    <meta
+      property="og:title"
+      content="Perfect Cat Streaming — ねこチャンの動画配信"
+    />
+    <meta
+      property="og:description"
+      content="ねこチャンの動画を再生・配信。HLS配信の品質を New Relic で計測する製品デモサイト。"
+    />
+    <meta property="og:url" content="https://perfectcatstreaming.com/" />
+    <meta
+      property="og:image"
+      content="https://perfectcatstreaming.com/og-image.jpg"
+    />
+    <meta property="og:locale" content="ja_JP" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Perfect Cat Streaming — ねこチャンの動画配信"
+    />
+    <meta
+      name="twitter:description"
+      content="ねこチャンの動画を再生・配信。HLS配信の品質を New Relic で計測する製品デモ。"
+    />
+    <meta
+      name="twitter:image"
+      content="https://perfectcatstreaming.com/og-image.jpg"
+    />
+
+    <!-- Structured data (schema.org) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Perfect Cat Streaming",
+        "url": "https://perfectcatstreaming.com/",
+        "description": "ねこチャンの動画を再生・配信できる猫動画ストリーミングの製品デモサイト。",
+        "inLanguage": "ja",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": "https://perfectcatstreaming.com/videos",
+          "query-input": "required name=search_term_string"
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      Perfect Cat Streaming
+      は、ねこチャンの動画を再生・配信できる猫動画ストリーミングサイトです。ご覧いただくには
+      JavaScript を有効にしてください。
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

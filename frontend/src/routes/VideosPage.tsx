@@ -2,9 +2,11 @@ import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout";
 import { CatCard } from "../components/CatCard";
 import { useCatClips } from "../hooks/useCatClips";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 
 /** Video list page — browse and play the cat clips. */
 export function VideosPage() {
+  useDocumentTitle("ねこチャンの動画一覧");
   const { videos, loading, error, refresh } = useCatClips();
 
   return (

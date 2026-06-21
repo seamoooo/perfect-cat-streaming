@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { Layout } from "../components/Layout";
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import nyarick from "../../images/nyarick.jpg";
 
 /** Landing page for the New Relic product demo. */
 export function TopPage() {
+  useDocumentTitle();
   return (
     <Layout>
       <section className="hero">
