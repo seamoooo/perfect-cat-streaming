@@ -268,6 +268,32 @@ terraform apply
 
 `docker-compose.override.yml`（dev専用・本番では `-f docker-compose.yml` 単独起動で読まれない）が backend `NEW_RELIC_LICENSE_KEY` と frontend `VITE_NEW_RELIC_LICENSE_KEY` を空にするので、`make up` のローカル環境はNRに一切送信しません。これにより、ローカルの compose `db` が NR に datastore エンティティとして現れません（本番APMは影響なし）。
 
+**アラート（terraform-provider-newrelic 管理）:**
+
+`newrelic_alerts.tf` が 1ポリシー + 3シグナルのNRQLアラートと、任意のEmail通知ワークフローを構築します。
+
+| アラート | シグナル（NRQL） | しきい値 |
+|---|---|---|
+| Backend: 変換スループット劣化 | `average(transcode.realtime_factor)`（appName絞り）| > 0.6 を5分（実時間より遅い＝SREカオスで悪化） |
+| Backend: Webスループット低下 | `rate(count(*),1m)` Webトランザクション（**baseline / lower_only**）| 学習ベースラインを3σ下回る（アイドルで誤発報しない） |
+| Browser: Core Web Vitals (LCP) | `percentile(largestContentfulPaint,75)` `PageViewTiming` | p75 > 2.5s（CWV "good" 上限） |
+| Video: プレイヤーエラー | `count(*) FROM PageAction WHERE actionName='CONTENT_ERROR'` | 5分に1件以上 |
+
+有効化条件:
+- `new_relic_user_api_key`（NRAK-*）が**必須**。未設定なら全 `newrelic_*` リソースは `count = 0` でスキップ（プロバイダも呼ばれない＝キー無しでも `plan` 可能）。
+- `new_relic_account_id`（default `6729598`）、`new_relic_region`（default `US`）でプロバイダを構成。
+- `new_relic_alert_email` を設定すると Email Destination → Channel → Workflow まで自動配線し、ポリシーの全 issue を通知。空ならアラート条件のみ（通知は NR UI で後接続）。
+- シークレット類は gitignore 対象の `secret.auto.tfvars` に置く（`*.tfvars` は ignore 済み）。
+
+```bash
+# secret.auto.tfvars（gitignore済み）に:
+#   new_relic_user_api_key = "NRAK-..."
+#   new_relic_alert_email  = "you@example.com"
+terraform apply
+```
+
+> Browser/Video の条件はアカウントスコープのNRQL。同一NRアカウントに複数のbrowser/videoアプリがある場合は `AND appName = '...'` を足して絞ってください。Video の event type が環境で異なる場合は `CONTENT_ERROR` のクエリを調整。
+
 ## 既知の制約
 
 - バックエンドは1レプリカ前提でも動きますが、RDS MySQL移行後は複数レプリカでも安全（メタデータが共有DBになったので）。スケールしたければ `backend_desired_count` を増やすだけ。

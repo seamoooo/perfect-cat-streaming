@@ -33,3 +33,11 @@ frontend_desired_count = 1
 # doesn't get committed.
 # new_relic_license_key = "abcdef0123456789abcdef0123456789abcdNRAL"
 # new_relic_app_name    = "perfect-cat-streaming-backend"
+
+# Optional New Relic ALERTS via the terraform-provider-newrelic. Requires a User
+# key (NRAK-*); with it unset, all alert resources are skipped (count = 0).
+# Put the secret bits in the gitignored secret.auto.tfvars instead of here.
+# new_relic_account_id   = 1234567               # default 6729598
+# new_relic_user_api_key = "NRAK-xxxxxxxxxxxxxx" # required to manage alerts
+# new_relic_region       = "US"                  # or "EU"
+# new_relic_alert_email  = "you@example.com"      # empty = no email workflow

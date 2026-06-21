@@ -148,10 +148,22 @@ variable "new_relic_ai_monitoring_streaming_enabled" {
 }
 
 variable "new_relic_user_api_key" {
-  description = "Optional User key (NRAK-*) — not used by the Go agent; stored in Secrets Manager for NerdGraph / Terraform NR provider use."
+  description = "Optional User key (NRAK-*) — not used by the Go agent; stored in Secrets Manager for NerdGraph / Terraform NR provider use. Required to manage alerts in Terraform."
   type        = string
   default     = ""
   sensitive   = true
+}
+
+variable "new_relic_account_id" {
+  description = "New Relic account ID for the Terraform provider (alerts/notifications)."
+  type        = number
+  default     = 6729598
+}
+
+variable "new_relic_alert_email" {
+  description = "Email address that receives New Relic alert notifications. Empty = no email destination/workflow created."
+  type        = string
+  default     = ""
 }
 
 # Optional HTTPS — set both to enable TLS on the ALB and CloudFront alias.
