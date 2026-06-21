@@ -49,12 +49,12 @@ variable "frontend_image" {
 
 variable "backend_cpu" {
   type    = number
-  default = 1024 # 1 vCPU — ffmpeg is CPU-heavy
+  default = 2048 # 2 vCPU — ffmpeg is CPU-heavy; HEVC (Pixel) decode needs headroom
 }
 
 variable "backend_memory" {
   type    = number
-  default = 2048
+  default = 4096 # 4 GB — avoid ffmpeg OOM on high-bitrate HEVC with 2 transcode workers
 }
 
 variable "frontend_cpu" {

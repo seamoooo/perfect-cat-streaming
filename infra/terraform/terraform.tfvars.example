@@ -7,9 +7,11 @@ region      = "ap-northeast-1"
 backend_image  = "REPLACE_ME.dkr.ecr.ap-northeast-1.amazonaws.com/perfect-cat-dev-backend:latest"
 frontend_image = "REPLACE_ME.dkr.ecr.ap-northeast-1.amazonaws.com/perfect-cat-dev-frontend:latest"
 
-# Sizing (ffmpeg is CPU-bound; bump backend if transcoding is slow)
-backend_cpu    = 1024
-backend_memory = 2048
+# Sizing (ffmpeg is CPU-bound; bump backend if transcoding is slow or HEVC
+# uploads fail with ffmpeg exit status 1). 2 vCPU / 4 GB is a safe baseline for
+# 1080p HEVC; valid Fargate combos: cpu 2048 -> memory 4096..16384.
+backend_cpu    = 2048
+backend_memory = 4096
 
 backend_desired_count  = 1
 frontend_desired_count = 1
