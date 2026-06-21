@@ -46,3 +46,7 @@ infra/terraform/lambda/*.zip
 # saved plan files
 infra/terraform/tfplan*
 infra/terraform/tfwaf
+
+# Kiro MCP config — contains secrets (GitHub PAT, New Relic key)
+.kiro/settings/mcp.json
+!.kiro/settings/mcp.json.example

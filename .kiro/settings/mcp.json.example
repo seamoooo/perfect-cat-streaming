@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "github": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server:latest",
+        "stdio",
+        "--read-only",
+        "--toolsets",
+        "repos,context"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_YOUR_GITHUB_PAT"
+      },
+      "disabled": false,
+      "autoApprove": [
+        "get_file_contents",
+        "search_code",
+        "list_commits",
+        "get_commit",
+        "search_repositories"
+      ]
+    },
+    "newrelic": {
+      "url": "https://mcp.newrelic.com/mcp/",
+      "transport": "http",
+      "headers": {
+        "api-key": "REPLACE_WITH_YOUR_NEW_RELIC_USER_KEY"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
