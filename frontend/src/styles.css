@@ -593,6 +593,27 @@ h3 {
   margin-bottom: -6px;
 }
 
+/* Inline metadata editor on the detail page */
+.detail-edit {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0;
+}
+.detail-edit input,
+.detail-edit textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.detail-edit textarea {
+  resize: vertical;
+}
+.detail-edit-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 /* ErrorBoundary fallback (also the "frontend" chaos demo surface) */
 .error-boundary {
   text-align: center;

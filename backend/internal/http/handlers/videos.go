@@ -63,20 +63,43 @@ func (h *Videos) Get(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, withPlaylistURL(v, h.Cfg.PublicBaseURL))
 }
 
-// Patch updates mutable fields on a Video. Currently supports `tags` only.
-// Body: {"tags": ["a","b"]}
+// Patch updates mutable metadata on a Video. Supports partial updates of
+// `title`, `description`, and `tags` (each optional; omitted fields are left
+// unchanged). Body e.g.: {"title":"…","description":"…","tags":["a","b"]}
 func (h *Videos) Patch(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if _, ok := h.Repo.Get(r.Context(), id); !ok {
+	cur, ok := h.Repo.Get(r.Context(), id)
+	if !ok {
 		http.NotFound(w, r)
 		return
 	}
 	var body struct {
-		Tags *[]string `json:"tags"`
+		Title       *string   `json:"title"`
+		Description *string   `json:"description"`
+		Tags        *[]string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		http.Error(w, "invalid json: "+err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	if body.Title != nil || body.Description != nil {
+		title := cur.Title
+		if body.Title != nil {
+			title = strings.TrimSpace(*body.Title)
+		}
+		description := cur.Description
+		if body.Description != nil {
+			description = *body.Description
+		}
+		if title == "" {
+			http.Error(w, "title cannot be empty", http.StatusBadRequest)
+			return
+		}
+		if err := h.Repo.UpdateMeta(r.Context(), id, title, description); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 	if body.Tags != nil {
 		if err := h.Repo.UpdateTags(r.Context(), id, *body.Tags); err != nil {
@@ -84,10 +107,14 @@ func (h *Videos) Patch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	v, ok := h.Repo.Get(r.Context(), id)
 	if !ok {
 		http.NotFound(w, r)
 		return
+	}
+	if txn := newrelic.FromContext(r.Context()); txn != nil {
+		txn.AddAttribute("video.id", id)
 	}
 	writeJSON(w, http.StatusOK, withPlaylistURL(v, h.Cfg.PublicBaseURL))
 }

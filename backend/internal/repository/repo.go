@@ -13,5 +13,6 @@ type Repository interface {
 	UpdateStatus(ctx context.Context, id string, status domain.Status, errMsg string) error
 	UpdateAfterTranscode(ctx context.Context, id string, durationSec float64, playlistURL string) error
 	UpdateTags(ctx context.Context, id string, tags []string) error
+	UpdateMeta(ctx context.Context, id, title, description string) error
 	Delete(ctx context.Context, id string) error
 }

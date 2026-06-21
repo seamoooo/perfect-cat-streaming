@@ -163,6 +163,20 @@ func (m *Memory) UpdateTags(_ context.Context, id string, tags []string) error {
 	return m.flush()
 }
 
+func (m *Memory) UpdateMeta(_ context.Context, id, title, description string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	v, ok := m.items[id]
+	if !ok {
+		return errors.New("not found")
+	}
+	v.Title = title
+	v.Description = description
+	v.UpdatedAt = time.Now().UTC()
+	m.items[id] = v
+	return m.flush()
+}
+
 func (m *Memory) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

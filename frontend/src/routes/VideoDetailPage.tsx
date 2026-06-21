@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { deleteVideo, getVideo } from "../lib/api";
+import { deleteVideo, getVideo, updateVideo } from "../lib/api";
 import { Layout } from "../components/Layout";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import { KanpachiPlayer } from "../components/player/KanpachiPlayer";
@@ -28,6 +28,9 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
   const [video, setVideo] = useState<Video | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState({ title: "", description: "" });
   useDocumentTitle(video?.title);
 
   useEffect(() => {
@@ -55,6 +58,34 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
     } catch (e) {
       window.alert(`削除失敗: ${e instanceof Error ? e.message : String(e)}`);
       setDeleting(false);
+    }
+  };
+
+  const startEdit = () => {
+    if (!video) return;
+    setDraft({ title: video.title, description: video.description ?? "" });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!video || saving) return;
+    const title = draft.title.trim();
+    if (!title) {
+      window.alert("タイトルを入力してください");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = await updateVideo(video.id, {
+        title,
+        description: draft.description,
+      });
+      setVideo(updated);
+      setEditing(false);
+    } catch (e) {
+      window.alert(`保存失敗: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -129,9 +160,51 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
                   </span>
                 )}
               </div>
-              <h1 className="detail-title">{video.title}</h1>
-              {video.description && (
-                <p className="detail-desc">{video.description}</p>
+              {editing ? (
+                <div className="detail-edit">
+                  <label className="field-label">タイトル</label>
+                  <input
+                    value={draft.title}
+                    onChange={(e) =>
+                      setDraft({ ...draft, title: e.target.value })
+                    }
+                    placeholder="タイトル"
+                  />
+                  <label className="field-label">説明</label>
+                  <textarea
+                    value={draft.description}
+                    onChange={(e) =>
+                      setDraft({ ...draft, description: e.target.value })
+                    }
+                    placeholder="説明"
+                    rows={3}
+                  />
+                  <div className="detail-edit-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={saveEdit}
+                      disabled={saving}
+                    >
+                      {saving ? "保存中…" : "保存"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setEditing(false)}
+                      disabled={saving}
+                    >
+                      キャンセル
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h1 className="detail-title">{video.title}</h1>
+                  {video.description && (
+                    <p className="detail-desc">{video.description}</p>
+                  )}
+                </>
               )}
               {video.tags?.length ? (
                 <div className="hashtags" style={{ marginTop: 12 }}>
@@ -145,11 +218,21 @@ export function VideoDetailPage({ sink, sessionId }: Props) {
             </div>
 
             <div className="detail-actions">
+              {!editing && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={startEdit}
+                  disabled={deleting}
+                >
+                  ✏️ 編集
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-danger"
                 onClick={onDeleteClick}
-                disabled={deleting}
+                disabled={deleting || editing}
               >
                 🗑 {deleting ? "削除中…" : "この動画を削除"}
               </button>

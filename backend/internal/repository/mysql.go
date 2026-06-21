@@ -228,6 +228,13 @@ UPDATE videos SET tags = ?, updated_at = ? WHERE id = ?`,
 	return err
 }
 
+func (m *MySQL) UpdateMeta(ctx context.Context, id, title, description string) error {
+	_, err := m.db.ExecContext(ctx, `
+UPDATE videos SET title = ?, description = ?, updated_at = ? WHERE id = ?`,
+		title, description, time.Now().UTC(), id)
+	return err
+}
+
 func (m *MySQL) Delete(ctx context.Context, id string) error {
 	res, err := m.db.ExecContext(ctx, `DELETE FROM videos WHERE id = ?`, id)
 	if err != nil {

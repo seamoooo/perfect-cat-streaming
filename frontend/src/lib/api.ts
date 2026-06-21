@@ -18,6 +18,23 @@ export async function getVideo(id: string): Promise<Video> {
   return res.json();
 }
 
+// Partial metadata update (title / description / tags). Omitted fields are
+// left unchanged on the server.
+export async function updateVideo(
+  id: string,
+  patch: { title?: string; description?: string; tags?: string[] },
+): Promise<Video> {
+  const res = await fetch(`${BASE}/api/videos/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    throw new Error(`updateVideo failed: ${res.status} ${await res.text()}`);
+  }
+  return res.json();
+}
+
 export async function deleteVideo(id: string): Promise<void> {
   const res = await fetch(`${BASE}/api/videos/${encodeURIComponent(id)}`, {
     method: "DELETE",
