@@ -144,6 +144,13 @@ resource "newrelic_notification_destination" "email" {
     key   = "email"
     value = var.new_relic_alert_email
   }
+  # NR injects a computed `link_sent_email` property server-side, which the
+  # provider otherwise wants to strip on every plan (a harmless perpetual diff).
+  # Ignore property drift so plans stay clean. To change the recipient later,
+  # update var.new_relic_alert_email and taint/recreate this resource.
+  lifecycle {
+    ignore_changes = [property]
+  }
 }
 
 resource "newrelic_notification_channel" "email" {
