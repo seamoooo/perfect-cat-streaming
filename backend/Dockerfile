@@ -22,8 +22,12 @@ CMD ["go", "run", "./cmd/server"]
 
 # --- runtime: slim image with only ffmpeg + binary ---
 FROM debian:bookworm-slim AS runtime
+# wget is required by the ECS container HEALTHCHECK (wget -O- /healthz). The slim
+# base doesn't ship it, so without this every deployment fails the health check
+# and ECS rolls back. (The dev stage uses the full golang image, which already
+# bundles wget — that's why local compose worked but prod deploys didn't.)
 RUN apt-get update \
- && apt-get install -y --no-install-recommends ffmpeg ca-certificates \
+ && apt-get install -y --no-install-recommends ffmpeg ca-certificates wget \
  && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=builder /out/server /app/server
