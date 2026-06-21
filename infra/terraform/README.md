@@ -198,6 +198,7 @@ NEW_RELIC_USER_API_KEY=NRAK-... NEW_RELIC_APP_NAME="PerfectCatStreaming (dev)" \
 - 起動時に backend が `videos` テーブルを `CREATE TABLE IF NOT EXISTS` で作る（マイグレーションツール不要のシンプル方式、tagsは `JSON` カラム）
 - パスワードは `random_password` で生成して **Secrets Manager** に保存。ECS task は `secrets` 経由で `DATABASE_URL` を注入されます（exec role に GetSecretValue 権限）
 - 接続: ECSタスクSGのみ許可、TLS（`tls=skip-verify`）
+- **New Relic 連携の計装**: `performance_insights_enabled`（クエリレベルのDB負荷・Top SQL、保持7日=無料）と Enhanced Monitoring（`monitoring_interval = 60`、OSレベルメトリクス）を有効化。標準の AWS/RDS メトリクスは CloudWatch Metric Stream 経由でNRへ流れます（下記）。いずれも **modify-in-place**（DB再作成・再起動なし）
 
 ローカル開発はベースの `docker-compose.yml` に `db: mysql:8.4` サービスがあるので `make up` でMySQLも自動起動します。`DATABASE_URL` を未設定で起動すれば in-memory + JSON にフォールバックします（旧モード維持）。
 
@@ -256,6 +257,16 @@ terraform apply
 （New Relic UI の Browser application > Snippet ページからコピペ。スクリプトは env を `--build-arg` 経由で Vite に渡します。）
 
 実行時には何も注入されない（ビルド時に焼き込み済み）ので、ECS task の env は backend 用のみ。
+
+**AWS インフラメトリクス（エージェントレス / CloudWatch Metric Streams）:**
+
+`newrelic_aws_integration.tf` が **CloudWatch Metric Stream → Kinesis Firehose → New Relic** のパイプラインを構築し、`AWS/RDS` `AWS/ApplicationELB` `AWS/ECS` `AWS/S3` `AWS/WAFV2` の各名前空間のメトリクスをエージェントなしでNRへ送ります（`var.new_relic_license_key` が空のときは作られません）。RDS は上記の Performance Insights / Enhanced Monitoring と併せて、CPU・接続数・IOPS・Top SQL までNRで見えます。
+
+> NR の「Uninstrumented database」提案は、APMのdatastoreセグメント（アプリが叩くDB）と、この AWS/RDS インフラエンティティが相関するまで表示されることがあります。エラーではなく、DB本体の計装を促す案内です。
+
+**ローカル開発では New Relic を無効化:**
+
+`docker-compose.override.yml`（dev専用・本番では `-f docker-compose.yml` 単独起動で読まれない）が backend `NEW_RELIC_LICENSE_KEY` と frontend `VITE_NEW_RELIC_LICENSE_KEY` を空にするので、`make up` のローカル環境はNRに一切送信しません。これにより、ローカルの compose `db` が NR に datastore エンティティとして現れません（本番APMは影響なし）。
 
 ## 既知の制約
 

@@ -9,6 +9,11 @@ services:
       - go-mod-cache:/go/pkg/mod
     environment:
       ALLOWED_ORIGINS: http://localhost:5173,http://localhost:8000
+      # Keep New Relic OFF in local dev: an empty license key makes the Go agent
+      # a no-op, so the local compose `db` never shows up as a datastore entity
+      # in New Relic. Production runs with `-f docker-compose.yml` only (no
+      # override), so prod APM is unaffected.
+      NEW_RELIC_LICENSE_KEY: ""
 
   frontend:
     build:
@@ -21,6 +26,9 @@ services:
       - "5173:5173"
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+      # Disable the browser agent locally too (no license key => browser.ts
+      # skips agent init), so dev never reports to New Relic.
+      VITE_NEW_RELIC_LICENSE_KEY: ""
 
 volumes:
   go-mod-cache:
