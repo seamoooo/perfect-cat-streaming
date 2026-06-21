@@ -593,6 +593,48 @@ h3 {
   margin-bottom: -6px;
 }
 
+/* Upload form — responsive so inputs/selects never overflow on mobile */
+.upload-form {
+  display: grid;
+  gap: 12px;
+}
+.upload-form input,
+.upload-form select,
+.upload-form textarea {
+  width: 100%;
+  min-width: 0; /* allow flex children to shrink below content size */
+}
+.upload-form .upload-row {
+  display: flex;
+  gap: 8px;
+}
+.upload-form .upload-row > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.upload-form .upload-thumb {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.upload-form .upload-thumb input {
+  flex: 1;
+  min-width: 0;
+}
+.upload-form .upload-thumb img {
+  width: 96px;
+  flex: none;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+}
+@media (max-width: 480px) {
+  .upload-form .upload-row {
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 760px) {
   .hero {
     grid-template-columns: 1fr;

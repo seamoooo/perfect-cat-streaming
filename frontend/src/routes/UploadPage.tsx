@@ -64,11 +64,11 @@ export function UploadPage() {
       </p>
 
       <section className="card" style={{ maxWidth: 560 }}>
-        <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+        <form onSubmit={onSubmit} className="upload-form">
           <label className="field-label">動画ファイル</label>
           <input
             type="file"
-            accept="video/mp4,video/*"
+            accept="video/*"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             required
           />
@@ -76,25 +76,14 @@ export function UploadPage() {
           <label className="field-label">
             サムネイル画像（任意・一覧に表示。未指定なら動画から自動生成）
           </label>
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+          <div className="upload-thumb">
             <input
               type="file"
               accept="image/*"
               onChange={(e) => setThumbnail(e.target.files?.[0] ?? null)}
-              style={{ flex: 1 }}
             />
             {thumbPreview && (
-              <img
-                src={thumbPreview}
-                alt="サムネイルプレビュー"
-                style={{
-                  width: 96,
-                  aspectRatio: "16 / 9",
-                  objectFit: "cover",
-                  borderRadius: 6,
-                  border: "1px solid var(--card-border)",
-                }}
-              />
+              <img src={thumbPreview} alt="サムネイルプレビュー" />
             )}
           </div>
 
@@ -108,12 +97,11 @@ export function UploadPage() {
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="upload-row">
             <input
               placeholder="猫の名前 (例: みけ)"
               value={form.catName}
               onChange={(e) => setForm({ ...form, catName: e.target.value })}
-              style={{ flex: 1 }}
             />
             <select
               value={form.breed}
