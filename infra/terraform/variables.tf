@@ -191,12 +191,6 @@ variable "cost_alert_email" {
   default     = ""
 }
 
-variable "slack_webhook_url" {
-  description = "Slack Incoming Webhook URL for #prefect-cat-streaming. Empty = no Slack notification channel is created. Put the real value in the gitignored secret.auto.tfvars."
-  type        = string
-  default     = ""
-  sensitive   = true
-}
 
 # Optional HTTPS — set both to enable TLS on the ALB and CloudFront alias.
 variable "domain_name" {

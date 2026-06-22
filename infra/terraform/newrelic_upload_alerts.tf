@@ -12,8 +12,7 @@
 # slack_webhook_url is set in secret.auto.tfvars.
 
 locals {
-  slack_enabled           = local.nr_alerts_enabled && var.slack_webhook_url != ""
-  upload_workflow_enabled = local.nr_alerts_enabled && (local.nr_email_enabled || local.slack_enabled)
+  upload_workflow_enabled = local.nr_alerts_enabled && local.nr_email_enabled
 }
 
 resource "newrelic_alert_policy" "upload_pipeline" {
@@ -117,40 +116,10 @@ resource "newrelic_notification_channel" "upload_email" {
   }
 }
 
-# --- Slack channel (Incoming Webhook) — fully IaC, no OAuth needed ---
-resource "newrelic_notification_destination" "slack" {
-  count      = local.slack_enabled ? 1 : 0
-  account_id = var.new_relic_account_id
-  name       = "${var.new_relic_app_name} slack"
-  type       = "WEBHOOK"
-  property {
-    key   = "url"
-    value = var.slack_webhook_url
-  }
-}
-
-resource "newrelic_notification_channel" "slack" {
-  count          = local.slack_enabled ? 1 : 0
-  account_id     = var.new_relic_account_id
-  name           = "${var.new_relic_app_name} slack channel"
-  type           = "WEBHOOK"
-  destination_id = newrelic_notification_destination.slack[0].id
-  product        = "IINT"
-  # Slack Incoming Webhooks expect {"text": ...}. Render NR issue fields into it.
-  property {
-    key   = "payload"
-    label = "Payload"
-    value = <<-EOT
-      {
-        "text": "🚨 [New Relic] {{ issueTitle }}\nPriority: {{ priority }} | State: {{ state }}\n{{ issuePageUrl }}"
-      }
-    EOT
-  }
-}
-
-# --- Workflow: route the upload-pipeline policy to email (+ Slack when set) ---
-# Attach the preview "SRE Agent" destination to THIS workflow in the New Relic UI
-# (it has no Terraform provider support yet).
+# --- Workflow: route the upload-pipeline policy to email ---
+# Slack (native OAuth) and the preview "SRE Agent" are attached to THIS workflow
+# in the New Relic UI. lifecycle.ignore_changes on `destination` below means a
+# later `terraform apply` won't strip those GUI-added destinations.
 resource "newrelic_workflow" "upload_pipeline" {
   count                 = local.upload_workflow_enabled ? 1 : 0
   account_id            = var.new_relic_account_id
@@ -173,10 +142,10 @@ resource "newrelic_workflow" "upload_pipeline" {
       channel_id = destination.value
     }
   }
-  dynamic "destination" {
-    for_each = local.slack_enabled ? [newrelic_notification_channel.slack[0].id] : []
-    content {
-      channel_id = destination.value
-    }
+
+  # Slack + SRE Agent are added to this workflow in the New Relic UI; don't let
+  # Terraform revert those GUI-managed destinations on the next apply.
+  lifecycle {
+    ignore_changes = [destination]
   }
 }
