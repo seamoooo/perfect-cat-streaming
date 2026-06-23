@@ -26,6 +26,12 @@ type Config struct {
 	// Empty = in-memory + JSON (local dev mode).
 	DatabaseURL string
 
+	// Hard cap on a single transcode job (ffmpeg + probe + poster). When the
+	// budget is exceeded the job's context is cancelled, ffmpeg is killed, and
+	// the video is marked status=error. Default 30 min for real videos; set low
+	// (e.g. 15s) to deliberately fail/​degrade for alerting demos.
+	TranscodeTimeoutSec int
+
 	// Local ephemeral-disk janitor. In S3 mode the local upload/HLS files are
 	// redundant after publish, so a periodic sweep deletes anything older than
 	// the TTL to keep Fargate ephemeral storage from filling up. Only runs in
@@ -74,6 +80,8 @@ func Load() Config {
 		S3Region:       getenv("S3_REGION", ""),
 		MediaBaseURL:   getenv("MEDIA_BASE_URL", ""),
 		DatabaseURL:    getenv("DATABASE_URL", ""),
+
+		TranscodeTimeoutSec: getenvInt("TRANSCODE_TIMEOUT_SEC", 1800),
 
 		LocalCleanupDisabled:      getenvBool("LOCAL_CLEANUP_DISABLED", false),
 		LocalCleanupTTLHours:      getenvInt("LOCAL_CLEANUP_TTL_HOURS", 24),

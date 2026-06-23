@@ -28,25 +28,30 @@ type Job struct {
 }
 
 type Queue struct {
-	jobs  chan Job
-	tx    *FFmpeg
-	repo  repository.Repository
-	stg   storage.Storage
-	pub   publisher.Publisher   // optional; nil = local mode
-	nrApp *newrelic.Application // optional; nil = no APM
+	jobs    chan Job
+	tx      *FFmpeg
+	repo    repository.Repository
+	stg     storage.Storage
+	pub     publisher.Publisher   // optional; nil = local mode
+	nrApp   *newrelic.Application // optional; nil = no APM
+	timeout time.Duration         // per-job hard cap; <=0 falls back to 30m
 }
 
-func NewQueue(tx *FFmpeg, repo repository.Repository, stg storage.Storage, pub publisher.Publisher, nrApp *newrelic.Application, buffer int) *Queue {
+func NewQueue(tx *FFmpeg, repo repository.Repository, stg storage.Storage, pub publisher.Publisher, nrApp *newrelic.Application, buffer int, timeout time.Duration) *Queue {
 	if buffer <= 0 {
 		buffer = 16
 	}
+	if timeout <= 0 {
+		timeout = 30 * time.Minute
+	}
 	return &Queue{
-		jobs:  make(chan Job, buffer),
-		tx:    tx,
-		repo:  repo,
-		stg:   stg,
-		pub:   pub,
-		nrApp: nrApp,
+		jobs:    make(chan Job, buffer),
+		tx:      tx,
+		repo:    repo,
+		stg:     stg,
+		pub:     pub,
+		nrApp:   nrApp,
+		timeout: timeout,
 	}
 }
 
@@ -109,7 +114,7 @@ func (q *Queue) process(ctx context.Context, workerID int, j Job) {
 		log.Printf("[transcoder] failed to mark processing: %v", err)
 	}
 
-	jobCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	jobCtx, cancel := context.WithTimeout(ctx, q.timeout)
 	defer cancel()
 
 	transcodeStart := time.Now()

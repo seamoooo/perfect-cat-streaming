@@ -57,6 +57,12 @@ variable "backend_memory" {
   default = 4096 # 4 GB — avoid ffmpeg OOM on high-bitrate HEVC with 2 transcode workers
 }
 
+variable "transcode_timeout_sec" {
+  description = "Hard cap per transcode job (seconds). 1800 (30m) for real use; set low (e.g. 15) to deliberately fail transcodes for alerting demos."
+  type        = number
+  default     = 1800
+}
+
 variable "frontend_cpu" {
   type    = number
   default = 256
