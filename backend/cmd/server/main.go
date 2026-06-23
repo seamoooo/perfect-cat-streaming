@@ -79,7 +79,7 @@ func main() {
 	}
 
 	queue := transcoder.NewQueue(tx, repo, stg, pub, nrApp, 32, time.Duration(cfg.TranscodeTimeoutSec)*time.Second)
-	queue.Start(rootCtx, 2)
+	queue.Start(rootCtx, cfg.TranscodeWorkers)
 
 	// Daily janitor for the local ephemeral disk. Only in S3 mode, where the
 	// published HLS/poster files are redundant locally; in local mode these ARE

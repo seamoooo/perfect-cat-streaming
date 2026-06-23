@@ -63,6 +63,12 @@ variable "transcode_timeout_sec" {
   default     = 1800
 }
 
+variable "transcode_workers" {
+  description = "Concurrent transcode workers. 2 for real use; raise (e.g. 4) with a tiny task to force OOM/CPU contention when several uploads arrive at once."
+  type        = number
+  default     = 2
+}
+
 variable "frontend_cpu" {
   type    = number
   default = 256

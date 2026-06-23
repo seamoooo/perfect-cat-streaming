@@ -32,6 +32,11 @@ type Config struct {
 	// (e.g. 15s) to deliberately fail/​degrade for alerting demos.
 	TranscodeTimeoutSec int
 
+	// Number of concurrent transcode workers. More workers = more simultaneous
+	// ffmpeg processes contending for CPU/memory — raise it (with a small task)
+	// to force OOM/CPU-starvation when several uploads land at once. Default 2.
+	TranscodeWorkers int
+
 	// Local ephemeral-disk janitor. In S3 mode the local upload/HLS files are
 	// redundant after publish, so a periodic sweep deletes anything older than
 	// the TTL to keep Fargate ephemeral storage from filling up. Only runs in
@@ -82,6 +87,7 @@ func Load() Config {
 		DatabaseURL:    getenv("DATABASE_URL", ""),
 
 		TranscodeTimeoutSec: getenvInt("TRANSCODE_TIMEOUT_SEC", 1800),
+		TranscodeWorkers:    getenvInt("TRANSCODE_WORKERS", 2),
 
 		LocalCleanupDisabled:      getenvBool("LOCAL_CLEANUP_DISABLED", false),
 		LocalCleanupTTLHours:      getenvInt("LOCAL_CLEANUP_TTL_HOURS", 24),

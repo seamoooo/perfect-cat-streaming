@@ -37,6 +37,7 @@ resource "aws_ecs_task_definition" "backend" {
       { name = "S3_REGION", value = var.region },
       { name = "MEDIA_BASE_URL", value = length(local.cloudfront_alias) > 0 ? "https://${local.cloudfront_alias[0]}" : "https://${aws_cloudfront_distribution.media.domain_name}" },
       { name = "TRANSCODE_TIMEOUT_SEC", value = tostring(var.transcode_timeout_sec) },
+      { name = "TRANSCODE_WORKERS", value = tostring(var.transcode_workers) },
       { name = "NEW_RELIC_APP_NAME", value = var.new_relic_app_name },
       # APP_ENV only drives the New Relic app-name suffix in the Go agent
       # (observability/newrelic.go: a " (env)" suffix is added unless env=="prod").
