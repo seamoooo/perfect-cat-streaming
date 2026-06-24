@@ -89,6 +89,20 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Demo: deliberately inefficient metadata registration (redundant
+	// UPDATE/SELECT loop) so New Relic flags the slow-query / N+1 pattern on the
+	// upload transaction. Runs in the request context so the DB segments land on
+	// this web transaction. Off unless CHAOS_DB_INEFFICIENT_LOOPS > 0.
+	if n := h.Cfg.ChaosDBInefficientLoops; n > 0 {
+		if err := h.Repo.InefficientMetaChurn(r.Context(), id, n); err != nil {
+			log.Printf("[upload] inefficient churn err videoID=%s: %v", id, err)
+		}
+		if txn := newrelic.FromContext(r.Context()); txn != nil {
+			txn.AddAttribute("chaos.injected", "inefficient_db")
+			txn.AddAttribute("chaos.db_churn_loops", n)
+		}
+	}
+
 	h.Queue.Enqueue(transcoder.Job{
 		VideoID:       id,
 		SrcPath:       dst,

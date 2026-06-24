@@ -177,6 +177,12 @@ func (m *Memory) UpdateMeta(_ context.Context, id, title, description string) er
 	return m.flush()
 }
 
+// InefficientMetaChurn is a no-op for the in-memory store (no real database to
+// generate slow-query telemetry against). See the MySQL impl for the demo.
+func (m *Memory) InefficientMetaChurn(_ context.Context, _ string, _ int) error {
+	return nil
+}
+
 func (m *Memory) Delete(_ context.Context, id string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

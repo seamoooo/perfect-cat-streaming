@@ -14,5 +14,10 @@ type Repository interface {
 	UpdateAfterTranscode(ctx context.Context, id string, durationSec float64, playlistURL string) error
 	UpdateTags(ctx context.Context, id string, tags []string) error
 	UpdateMeta(ctx context.Context, id, title, description string) error
+	// InefficientMetaChurn runs `loops` redundant single-row UPDATE + read-back
+	// SELECT cycles — a deliberate N+1 / write-amplification anti-pattern used
+	// only by the demo (gated on CHAOS_DB_INEFFICIENT_LOOPS) so New Relic flags
+	// the slow query pattern. No-op on stores without a real database.
+	InefficientMetaChurn(ctx context.Context, id string, loops int) error
 	Delete(ctx context.Context, id string) error
 }

@@ -235,6 +235,24 @@ UPDATE videos SET title = ?, description = ?, updated_at = ? WHERE id = ?`,
 	return err
 }
 
+// InefficientMetaChurn deliberately hammers the DB with redundant per-iteration
+// UPDATE + SELECT on the same row (an N+1 / write-amplification anti-pattern).
+// Each statement runs through the nrmysql driver, so the upload transaction
+// shows dozens of datastore segments — exactly what New Relic's slow-query /
+// performance detection surfaces. Demo only; gated by CHAOS_DB_INEFFICIENT_LOOPS.
+func (m *MySQL) InefficientMetaChurn(ctx context.Context, id string, loops int) error {
+	for i := 0; i < loops; i++ {
+		if _, err := m.db.ExecContext(ctx,
+			`UPDATE videos SET updated_at = ? WHERE id = ?`, time.Now().UTC(), id); err != nil {
+			return err
+		}
+		// Read the row back every iteration (the classic N+1 read).
+		var title string
+		_ = m.db.QueryRowContext(ctx, `SELECT title FROM videos WHERE id = ?`, id).Scan(&title)
+	}
+	return nil
+}
+
 func (m *MySQL) Delete(ctx context.Context, id string) error {
 	res, err := m.db.ExecContext(ctx, `DELETE FROM videos WHERE id = ?`, id)
 	if err != nil {

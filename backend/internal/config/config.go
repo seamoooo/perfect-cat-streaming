@@ -37,6 +37,12 @@ type Config struct {
 	// to force OOM/CPU-starvation when several uploads land at once. Default 2.
 	TranscodeWorkers int
 
+	// Demo only: when > 0, an upload runs this many redundant single-row
+	// UPDATE + read-back SELECT cycles while saving metadata — a deliberate
+	// N+1 / write-amplification anti-pattern that New Relic's slow-query /
+	// performance detection flags. Default 0 (off). Set e.g. 50 to demo it.
+	ChaosDBInefficientLoops int
+
 	// Local ephemeral-disk janitor. In S3 mode the local upload/HLS files are
 	// redundant after publish, so a periodic sweep deletes anything older than
 	// the TTL to keep Fargate ephemeral storage from filling up. Only runs in
@@ -88,6 +94,8 @@ func Load() Config {
 
 		TranscodeTimeoutSec: getenvInt("TRANSCODE_TIMEOUT_SEC", 1800),
 		TranscodeWorkers:    getenvInt("TRANSCODE_WORKERS", 2),
+
+		ChaosDBInefficientLoops: getenvInt("CHAOS_DB_INEFFICIENT_LOOPS", 0),
 
 		LocalCleanupDisabled:      getenvBool("LOCAL_CLEANUP_DISABLED", false),
 		LocalCleanupTTLHours:      getenvInt("LOCAL_CLEANUP_TTL_HOURS", 24),

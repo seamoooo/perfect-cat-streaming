@@ -69,6 +69,12 @@ variable "transcode_workers" {
   default     = 2
 }
 
+variable "chaos_db_inefficient_loops" {
+  description = "Demo only: redundant UPDATE+SELECT cycles per upload (N+1/write-amplification anti-pattern for New Relic slow-query detection). 0 = off; e.g. 50 to demo it."
+  type        = number
+  default     = 0
+}
+
 variable "frontend_cpu" {
   type    = number
   default = 256
