@@ -78,7 +78,7 @@ func main() {
 		log.Printf("[publisher] local mode (no S3)")
 	}
 
-	queue := transcoder.NewQueue(tx, repo, stg, pub, nrApp, 32, time.Duration(cfg.TranscodeTimeoutSec)*time.Second)
+	queue := transcoder.NewQueue(tx, repo, stg, pub, nrApp, cfg.TranscodeQueueBuffer, time.Duration(cfg.TranscodeTimeoutSec)*time.Second)
 	queue.Start(rootCtx, cfg.TranscodeWorkers)
 
 	// Daily janitor for the local ephemeral disk. Only in S3 mode, where the

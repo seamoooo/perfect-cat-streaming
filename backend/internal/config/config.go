@@ -37,6 +37,11 @@ type Config struct {
 	// to force OOM/CPU-starvation when several uploads land at once. Default 2.
 	TranscodeWorkers int
 
+	// Transcode queue buffer. When full, uploads are rejected with 503 (the
+	// handler uses non-blocking TryEnqueue). Default 32. Set small (e.g. 2) +
+	// few workers to make overload visibly reject uploads in the frontend.
+	TranscodeQueueBuffer int
+
 	// Demo only: when > 0, an upload runs this many redundant single-row
 	// UPDATE + read-back SELECT cycles while saving metadata — a deliberate
 	// N+1 / write-amplification anti-pattern that New Relic's slow-query /
@@ -93,7 +98,8 @@ func Load() Config {
 		DatabaseURL:    getenv("DATABASE_URL", ""),
 
 		TranscodeTimeoutSec: getenvInt("TRANSCODE_TIMEOUT_SEC", 1800),
-		TranscodeWorkers:    getenvInt("TRANSCODE_WORKERS", 2),
+		TranscodeWorkers:     getenvInt("TRANSCODE_WORKERS", 2),
+		TranscodeQueueBuffer: getenvInt("TRANSCODE_QUEUE_BUFFER", 32),
 
 		ChaosDBInefficientLoops: getenvInt("CHAOS_DB_INEFFICIENT_LOOPS", 0),
 

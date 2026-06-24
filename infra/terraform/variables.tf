@@ -69,6 +69,12 @@ variable "transcode_workers" {
   default     = 2
 }
 
+variable "transcode_queue_buffer" {
+  description = "Transcode queue buffer; uploads get 503 when full. 32 for real use; set small (e.g. 2) with few workers to make overload reject uploads (visible in the frontend)."
+  type        = number
+  default     = 32
+}
+
 variable "chaos_db_inefficient_loops" {
   description = "Demo only: redundant UPDATE+SELECT cycles per upload (N+1/write-amplification anti-pattern for New Relic slow-query detection). 0 = off; e.g. 50 to demo it."
   type        = number

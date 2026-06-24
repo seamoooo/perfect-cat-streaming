@@ -89,21 +89,7 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Demo: deliberately inefficient metadata registration (redundant
-	// UPDATE/SELECT loop) so New Relic flags the slow-query / N+1 pattern on the
-	// upload transaction. Runs in the request context so the DB segments land on
-	// this web transaction. Off unless CHAOS_DB_INEFFICIENT_LOOPS > 0.
-	if n := h.Cfg.ChaosDBInefficientLoops; n > 0 {
-		if err := h.Repo.InefficientMetaChurn(r.Context(), id, n); err != nil {
-			log.Printf("[upload] inefficient churn err videoID=%s: %v", id, err)
-		}
-		if txn := newrelic.FromContext(r.Context()); txn != nil {
-			txn.AddAttribute("chaos.injected", "inefficient_db")
-			txn.AddAttribute("chaos.db_churn_loops", n)
-		}
-	}
-
-	h.Queue.Enqueue(transcoder.Job{
+	job := transcoder.Job{
 		VideoID:       id,
 		SrcPath:       dst,
 		OutDir:        h.Stg.HLSDir(id),
@@ -114,7 +100,34 @@ func (h *Upload) Handle(w http.ResponseWriter, r *http.Request) {
 		// Developer demo: an "SRE" keyword in the description degrades transcode
 		// throughput so the slowdown is observable in New Relic APM.
 		ChaosSlow: chaos.Directive(v.Description) == chaos.ModeSRE,
-	})
+	}
+
+	// Backpressure: reject (503) instead of blocking when the transcode queue is
+	// full. With a small TRANSCODE_QUEUE_BUFFER + few workers, overload becomes
+	// visible to the client — the frontend surfaces the upload error.
+	if !h.Queue.TryEnqueue(job) {
+		_ = h.Repo.Delete(r.Context(), id)
+		_ = h.Stg.RemoveVideo(id)
+		if txn := newrelic.FromContext(r.Context()); txn != nil {
+			txn.AddAttribute("chaos.injected", "queue_full_503")
+		}
+		log.Printf("[upload] rejected videoID=%s: transcode queue full", id)
+		http.Error(w, "server busy: transcode queue full, please retry", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Demo: deliberately inefficient metadata registration (redundant
+	// UPDATE/SELECT loop) so New Relic flags the slow-query / N+1 pattern on the
+	// upload transaction. Off unless CHAOS_DB_INEFFICIENT_LOOPS > 0.
+	if n := h.Cfg.ChaosDBInefficientLoops; n > 0 {
+		if err := h.Repo.InefficientMetaChurn(r.Context(), id, n); err != nil {
+			log.Printf("[upload] inefficient churn err videoID=%s: %v", id, err)
+		}
+		if txn := newrelic.FromContext(r.Context()); txn != nil {
+			txn.AddAttribute("chaos.injected", "inefficient_db")
+			txn.AddAttribute("chaos.db_churn_loops", n)
+		}
+	}
 
 	// Domain custom attributes on the upload web transaction.
 	if txn := newrelic.FromContext(r.Context()); txn != nil {

@@ -68,6 +68,18 @@ func (q *Queue) Enqueue(j Job) {
 	q.jobs <- j
 }
 
+// TryEnqueue adds a job without blocking. Returns false when the buffer is full
+// so the caller can apply backpressure (e.g. reject the upload with 503) instead
+// of hanging the request.
+func (q *Queue) TryEnqueue(j Job) bool {
+	select {
+	case q.jobs <- j:
+		return true
+	default:
+		return false
+	}
+}
+
 func (q *Queue) worker(ctx context.Context, id int) {
 	log.Printf("[transcoder] worker#%d started", id)
 	for {
