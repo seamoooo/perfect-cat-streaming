@@ -97,6 +97,24 @@ CREATE TABLE IF NOT EXISTS ` + "`videos`" + ` (
 	if _, err := m.db.ExecContext(ctx, ddl); err != nil {
 		return err
 	}
+
+	// Side metadata table for the inefficient-DB demo (InefficientMetaChurn).
+	// Intentionally has NO secondary indexes — video_id / note are queried with
+	// full scans, LIKE, ORDER BY and a correlated subquery so New Relic's
+	// slow-query / performance detection has clear anti-patterns to surface.
+	const metaDDL = `
+CREATE TABLE IF NOT EXISTS ` + "`video_metadata`" + ` (
+    ` + "`id`" + `         BIGINT       NOT NULL AUTO_INCREMENT,
+    ` + "`video_id`" + `   VARCHAR(64)  NOT NULL,
+    ` + "`attr_key`" + `   VARCHAR(64)  NOT NULL,
+    ` + "`attr_value`" + ` TEXT         NOT NULL,
+    ` + "`note`" + `       TEXT         NOT NULL,
+    ` + "`created_at`" + ` DATETIME(6)  NOT NULL,
+    PRIMARY KEY (` + "`id`" + `)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;`
+	if _, err := m.db.ExecContext(ctx, metaDDL); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -241,15 +259,50 @@ UPDATE videos SET title = ?, description = ?, updated_at = ? WHERE id = ?`,
 // shows dozens of datastore segments — exactly what New Relic's slow-query /
 // performance detection surfaces. Demo only; gated by CHAOS_DB_INEFFICIENT_LOOPS.
 func (m *MySQL) InefficientMetaChurn(ctx context.Context, id string, loops int) error {
+	now := func() time.Time { return time.Now().UTC() }
+	// drain runs a SELECT and discards rows (so the server actually executes it).
+	drain := func(query string) {
+		rows, err := m.db.QueryContext(ctx, query)
+		if err != nil {
+			return
+		}
+		for rows.Next() {
+		}
+		_ = rows.Close()
+	}
+
+	// Bound the side table (and a deliberately unindexed full-scan DELETE).
+	_, _ = m.db.ExecContext(ctx,
+		`DELETE FROM video_metadata WHERE created_at < ?`, now().Add(-6*time.Hour))
+
+	// N+1 / write amplification: one INSERT per "attribute" into the unindexed
+	// side table + a redundant single-row UPDATE + a read-back SELECT, per loop.
 	for i := 0; i < loops; i++ {
+		note := fmt.Sprintf("metadata churn note #%d for video %s — %s",
+			i, id, strings.Repeat("x", 24))
 		if _, err := m.db.ExecContext(ctx,
-			`UPDATE videos SET updated_at = ? WHERE id = ?`, time.Now().UTC(), id); err != nil {
+			`INSERT INTO video_metadata (video_id, attr_key, attr_value, note, created_at)
+			 VALUES (?, ?, ?, ?, ?)`,
+			id, fmt.Sprintf("attr_%d", i), fmt.Sprintf("val_%d", i), note, now()); err != nil {
 			return err
 		}
-		// Read the row back every iteration (the classic N+1 read).
+		if _, err := m.db.ExecContext(ctx,
+			`UPDATE videos SET updated_at = ? WHERE id = ?`, now(), id); err != nil {
+			return err
+		}
 		var title string
 		_ = m.db.QueryRowContext(ctx, `SELECT title FROM videos WHERE id = ?`, id).Scan(&title)
 	}
+
+	// Genuinely inefficient query shapes (full scans / correlated subquery with
+	// LIKE / filesort on an unindexed TEXT column) — variety for the slow-query
+	// analysis on top of the N+1 pattern above.
+	drain(`SELECT v.id,
+	              (SELECT COUNT(*) FROM video_metadata m
+	               WHERE m.note LIKE CONCAT('%', v.cat_name, '%')) AS hits
+	       FROM videos v`)
+	drain(`SELECT note FROM video_metadata ORDER BY note DESC LIMIT 25`)
+	drain(`SELECT COUNT(*) AS n, AVG(CHAR_LENGTH(note)) AS avg_len FROM video_metadata`)
 	return nil
 }
 
