@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
-import nrLogo from "../../icons/newrelic.dark.svg";
+// Same mark as the favicon (icons/newrelic.svg) — its dark-faced cube reads on
+// the light theme; newrelic.dark.svg has a white face meant for dark backgrounds.
+import nrLogo from "../../icons/newrelic.svg";
 
 const navClass = ({ isActive }: { isActive: boolean }) =>
   isActive ? "nav-link active" : "nav-link";
