@@ -43,7 +43,7 @@ resource "newrelic_nrql_alert_condition" "transcode_error" {
   critical {
     operator              = "above"
     threshold             = 0
-    threshold_duration    = 300
+    threshold_duration    = 60
     threshold_occurrences = "at_least_once"
   }
 }
@@ -56,9 +56,9 @@ resource "newrelic_nrql_alert_condition" "transcode_degraded" {
   policy_id                    = newrelic_alert_policy.upload_pipeline[0].id
   type                         = "static"
   name                         = "Transcode job degraded (realtime_factor)"
-  description                  = "transcode.realtime_factor sustained high — ffmpeg starved for CPU/memory."
+  description                  = "transcode.realtime_factor high — ffmpeg starved for CPU/memory."
   enabled                      = true
-  aggregation_window           = 300
+  aggregation_window           = 60
   aggregation_method           = "event_flow"
   aggregation_delay            = 120
   violation_time_limit_seconds = 3600
@@ -68,9 +68,9 @@ resource "newrelic_nrql_alert_condition" "transcode_degraded" {
   }
   critical {
     operator              = "above"
-    threshold             = 5
-    threshold_duration    = 300
-    threshold_occurrences = "all"
+    threshold             = 0.3
+    threshold_duration    = 60
+    threshold_occurrences = "at_least_once"
   }
 }
 
@@ -90,12 +90,12 @@ resource "newrelic_nrql_alert_condition" "backend_latency_spike" {
   violation_time_limit_seconds = 3600
 
   nrql {
-    query = "SELECT count(*) FROM Transaction WHERE appName = '${var.new_relic_app_name}' AND transactionType = 'Web' AND duration > 10"
+    query = "SELECT count(*) FROM Transaction WHERE appName = '${var.new_relic_app_name}' AND transactionType = 'Web' AND duration > 1"
   }
   critical {
     operator              = "above"
     threshold             = 0
-    threshold_duration    = 300
+    threshold_duration    = 60
     threshold_occurrences = "at_least_once"
   }
 }
